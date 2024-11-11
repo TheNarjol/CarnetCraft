@@ -1,0 +1,51 @@
+# Entornos de Conda
+.env
+*.conda
+*.yaml
+
+# Entornos virtuales de Python
+venv/
+.venv/
+
+# Archivos de compilación y cachés
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Archivos de configuración de IDEs
+.vscode/
+.idea/
+
+# Archivos de logs
+*.log
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos específicos de Python
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Ignorar directorio wkhtmltox
+wkhtmltox/
+
+# Ignorar archivos PDF generados
+*.pdf
+
+# Archivos de configuración de Notepad++
+*.sublime-project
+*.sublime-workspace
+*.npp
+
+# Archivos de configuración de Sublime Text
+*.sublime-settings
+
+
+# Ignorar archivos CSV y Excel
+*.csv
+*.xlsx
+*.xls

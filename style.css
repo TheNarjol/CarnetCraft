@@ -1,0 +1,17 @@
+body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+			font: 10pt
+        }
+        .carnet {
+                border: 1px solid #000;
+    padding: 15px;
+    width: 5.4cm;
+    height: 8.4cm;
+	border-top-width: 1px;
+    margin-top: 0px;
+    padding-top: 1cm;
+    padding-right: 0.756cm;
+    padding-left: 0.756cm;
+    padding-bottom: 0.756cm;
+        }
