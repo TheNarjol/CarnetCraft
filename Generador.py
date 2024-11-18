@@ -41,6 +41,48 @@ class PDFGeneratorApp:
 
         self.df = None  # DataFrame para almacenar los datos
 
+        # Botón para previsualizar el carnet
+        self.preview_button = tk.Button(root, text="Previsualizar Carnet", command=self.preview_carnet)
+        self.preview_button.pack(pady=10)
+
+    def preview_carnet(self):
+        """
+        Previsualiza el carnet en una ventana emergente.
+
+        Toma la fila seleccionada en la tabla y genera un HTML para mostrar
+        el carnet en una nueva ventana.
+        """
+        selected_item = self.tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Advertencia", "Por favor, selecciona un carnet para previsualizar.")
+            return
+
+        # Obtener la fila seleccionada
+        item = selected_item[0]
+        data_row = self.tree.item(item)['values']
+        data_row_dict = dict(zip(self.tree["columns"], data_row))
+
+        # Configurar el entorno de Jinja2 para cargar plantillas
+        env = Environment(loader=FileSystemLoader('.'))
+        template = env.get_template("carnet_template.html")
+
+        # Renderizar el HTML con los datos de la fila
+        html_out = template.render(data_row=data_row_dict)
+
+        # Crear una nueva ventana para la previsualización
+        preview_window = tk.Toplevel(self.root)
+        preview_window.title("Previsualización de Carnet")
+
+        # Usar un Text widget para mostrar el HTML
+        text_widget = tk.Text(preview_window, wrap='word')
+        text_widget.insert('1.0', html_out)
+        text_widget.config(state='disabled')  # Hacer el Text widget de solo lectura
+        text_widget.pack(expand=True, fill='both')
+
+        # Botón para cerrar la ventana de previsualización
+        close_button = tk.Button(preview_window, text="Cerrar", command=preview_window.destroy)
+        close_button.pack(pady=10)
+
     def load_file(self):
         """
         Carga un archivo Excel y muestra sus datos en la tabla.
