@@ -1,11 +1,3 @@
-"""
-Generador de Carnets PDF a partir de datos en un archivo Excel.
-Desarrollado por theNarjol.
-
-Este script permite al usuario seleccionar un archivo Excel que contenga datos
-de personas y generar carnets en formato PDF utilizando una plantilla HTML.
-"""
-
 import pandas as pd
 import tkinter as tk
 from tkinter import filedialog, messagebox, Menu
@@ -49,6 +41,13 @@ class PDFGeneratorApp:
         # Vincular el evento de clic en la tabla
         self.tree.bind("<ButtonRelease-1>", self.on_treeview_click)
 
+        # Agregar un combobox para seleccionar el tipo de carnet
+        self.tipo_carnet_var = tk.StringVar()
+        self.tipo_carnet_combobox = ttk.Combobox(root, textvariable=self.tipo_carnet_var)
+        self.tipo_carnet_combobox['values'] = ("Profesional", "Gerencial", "Administrativo")
+        self.tipo_carnet_combobox.current(0)  # Establecer el valor predeterminado
+        self.tipo_carnet_combobox.pack(pady=5, anchor='w', padx=10)
+
     def toggle_select_all(self):
         """Selecciona o deselecciona todos los carnets en el Treeview."""
         if len(self.tree.selection()) == len(self.tree.get_children()):
@@ -63,27 +62,29 @@ class PDFGeneratorApp:
         data_row_dict = dict(zip(self.tree["columns"], data_row))
 
         env = Environment(loader=FileSystemLoader('.'))
-        template = env.get_template("carnet_template.html")
+        try:
+            template = env.get_template("carnet_template.html")
+            html_out = template.render(data_row=data_row_dict)
 
-        html_out = template.render(data_row=data_row_dict)
+            preview_window = tk.Toplevel(self.root)
+            preview_window.title("Previsualización de Carnet")
 
-        preview_window = tk.Toplevel(self.root)
-        preview_window.title("Previsualización de Carnet")
+            text_widget = tk.Text(preview_window, wrap='word')
+            text_widget.insert('1.0', html_out)
+            text_widget.config(state='disabled')
+            text_widget.pack(expand=True, fill='both')
 
-        text_widget = tk.Text(preview_window, wrap='word')
-        text_widget.insert('1.0', html_out)
-        text_widget.config(state='disabled')
-        text_widget.pack(expand=True, fill='both')
-
-        close_button = tk.Button(preview_window, text="Cerrar", command=preview_window.destroy)
-        close_button.pack(pady=10)
+            close_button = tk.Button(preview_window, text="Cerrar", command=preview_window.destroy)
+            close_button.pack(pady=10)
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo cargar la plantilla: {str(e)}")
 
     def load_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx;*.xls")])
         if file_path:
             try:
                 self.df = pd.read_excel(file_path)
-                required_columns = ['Nombre', 'Apellidos', 'Cedula', 'Adscrito', 'Cargo', 'Tipo']
+                required_columns = ['Nombre', 'Apellidos', 'Cedula', 'Adscrito', 'Cargo']
                 
                 if not all(col in self.df.columns for col in required_columns):
                     raise ValueError(f"El DataFrame debe contener las columnas: {required_columns}")
@@ -92,26 +93,28 @@ class PDFGeneratorApp:
                     self.tree.delete(i)
 
                 for index, row in self.df.iterrows():
-                    self.tree.insert("", "end", values=list(row) + ["Previsualizar", "Generar"])
-
+                    self.tree.insert("", "end", values=list(row) + ["Previsualizar", "Generar"])  # Agregar un valor placeholder
             except Exception as e:
                 messagebox.showerror("Error ", str(e))
+
     def generate_carnet(self, item):
         data_row = self.tree.item(item)['values']
         data_row_dict = dict(zip(self.tree["columns"], data_row))
 
         env = Environment(loader=FileSystemLoader('.'))
-        template = env.get_template("carnet_template.html")
-
         path_wkhtmltopdf = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wkhtmltox', 'bin', 'wkhtmltopdf.exe')
         config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
 
-        html_out = template.render(data_row=data_row_dict)
+        try:
+            template = env.get_template("carnet_template.html")
+            html_out = template.render(data_row=data_row_dict)
 
-        pdf_file_path = f"{data_row_dict['Nombre']}_{data_row_dict['Apellidos']}_carnet.pdf"
-        pdfkit.from_string(html_out, pdf_file_path, configuration=config)
+            pdf_file_path = f"{data_row_dict['Nombre']}_{data_row_dict['Apellidos']}_carnet.pdf"
+            pdfkit.from_string(html_out, pdf_file_path, configuration=config)
 
-        messagebox.showinfo("Éxito", f"Carnet generado: {pdf_file_path}")
+            messagebox.showinfo("Éxito", f"Carnet generado: {pdf_file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo generar el carnet: {str(e)}")
 
     def generate_pdfs(self):
         if self.df is None:
@@ -124,22 +127,38 @@ class PDFGeneratorApp:
             return
 
         env = Environment(loader=FileSystemLoader('.'))
-        template = env.get_template("carnet_template.html")
-
         path_wkhtmltopdf = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wkhtmltox', 'bin', 'wkhtmltopdf.exe')
         config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
 
         for item in selected_items:
             data_row = self.tree.item(item)['values']
-            pdf_filename = self.generate_pdf(dict(zip(self.tree["columns"], data_row)), template, config)
-            print(f"PDF generado: {pdf_filename}")
+            tipo_carnet = self.tipo_carnet_var.get()  # Obtener el tipo de carnet del combobox
+
+            # Seleccionar la plantilla según el tipo de carnet
+            try:
+                if tipo_carnet == "Profesional":
+                    template = env.get_template("carnet_profesional_template.html")
+                elif tipo_carnet == "Gerencial":
+                    template = env.get_template("carnet_gerencial_template.html")
+                elif tipo_carnet == "Administrativo":
+                    template = env.get_template("carnet_administrativo_template.html")
+                else:
+                    messagebox.showwarning("Advertencia", "Tipo de carnet no válido.")
+                    continue  # Salta a la siguiente iteración si el tipo de carnet no es válido
+
+                pdf_filename = self.generate_pdf(dict(zip(self.tree["columns"], data_row)), template, config)
+                print(f"PDF generado: {pdf_filename}")
+            except Exception as e:
+                messagebox.showerror("Error", f"No se pudo generar el PDF para {tipo_carnet}: {str(e)}")
 
         messagebox.showinfo("Éxito", "Todos los PDFs seleccionados han sido generados.")
 
     def generate_pdf(self, data_row, template, config):
         html_out = template.render(data_row=data_row)
-        pdf_filename = f"{data_row['Cedula']}_{data_row['Tipo']}.pdf"
+        pdf_filename = f"{data_row['Cedula']}_{self.tipo_carnet_var.get()}.pdf"  # Cambiar 'Tipo' por el valor del combobox
+
         pdfkit.from_string(html_out, pdf_filename, configuration=config, options={"enable-local-file-access": None})
+
         return pdf_filename
 
     def on_treeview_click(self, event):
@@ -154,7 +173,6 @@ class PDFGeneratorApp:
 
             elif column_index == len(self.tree["columns"]) - 1:
                 self.generate_carnet(clicked_item)
-
 
 if __name__ == "__main__":
     root = tk.Tk()

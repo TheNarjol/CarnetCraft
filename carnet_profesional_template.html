@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Carnet</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+			font: 10pt
+        }
+        .carnet {
+                border: 1px solid #000;
+    padding: 15px;
+    width: 5.4cm;
+    height: 8.4cm;
+	border-top-width: 1px;
+    margin-top: 0px;
+    padding-top: 1cm;
+    padding-right: 0.756cm;
+    padding-left: 0.756cm;
+    padding-bottom: 0.756cm;
+        }
+    </style>
+</head>
+<body>
+    <div class="carnet">
+        <h1>Carnet</h1>
+        <p><strong>Nombre:</strong> {{ data_row['Nombre'] }}</p>
+        <p><strong>Apellidos:</strong> {{ data_row['Apellidos'] }}</p>
+        <p><strong>Cédula:</strong> {{ data_row['Cedula'] }}</p>
+        <p><strong>Adscrito:</strong> {{ data_row['Adscrito'] }}</p>
+        <p><strong>Cargo:</strong> {{ data_row['Cargo'] }}</p>
+        <p><strong>Tipo:</strong> {{ data_row['Tipo'] }}</p>
+    </div>
+</body>
+</html>
