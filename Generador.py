@@ -5,7 +5,7 @@ from tkinter import ttk
 from jinja2 import Environment, FileSystemLoader
 import pdfkit
 import os
-
+import platform
 
 class PDFGeneratorApp:
     def __init__(self, root):
@@ -114,12 +114,18 @@ class PDFGeneratorApp:
             )
             return
         env = Environment(loader=FileSystemLoader("."))
-        path_wkhtmltopdf = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "wkhtmltox",
-            "bin",
-            "wkhtmltopdf.exe",
-        )
+        
+        # # Determinar la ruta de wkhtmltopdf según el sistema operativo
+        if platform.system() == "Windows":
+            path_wkhtmltopdf = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "wkhtmltox",
+                "bin",
+                "wkhtmltopdf.exe",
+            )
+        else:  # Asumir que es Linux
+            path_wkhtmltopdf = "/usr/local/bin/wkhtmltopdf"  # Asegúrate de que wkhtmltopdf esté en el PATH
+
         config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
         for item in selected_items:
             data_row = self.tree.item(item)["values"]
