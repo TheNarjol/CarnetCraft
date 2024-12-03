@@ -35,6 +35,10 @@ class ImageGeneratorApp:
         for col in self.tree["columns"]:
             self.tree.heading(col, text=col)
         self.tree.pack(pady=10, padx=10, fill="both", expand=True)
+
+        # Asociar el evento de doble clic con el método open_detail_window
+        self.tree.bind("<Double-1>", self.open_detail_window)
+
         # Botón para generar imágenes
         self.generate_button = tk.Button(
             root, text="Generar Imágenes", command=self.generate_images
@@ -95,6 +99,40 @@ class ImageGeneratorApp:
                     )  # Agregar solo los valores relevantes
             except Exception as e:
                 messagebox.showerror("Error", str(e))
+
+    def open_detail_window(self, event):
+        """Abre una nueva ventana con los detalles del producto seleccionado para editar."""
+        selected_item = self.tree.selection()
+        if not selected_item:
+            return  # No hay selección, no hacer nada
+
+        item_values = self.tree.item(selected_item[0])["values"]
+        detail_window = tk.Toplevel(self.root)
+        detail_window.title("Editar Det alles del Producto")
+
+        # Crear variables para almacenar los valores editables
+        edit_vars = [tk.StringVar(value=value) for value in item_values]
+
+        # Crear etiquetas y campos de entrada para cada detalle
+        labels = ["Nombre", "Apellidos", "Cedula", "Adscrito", "Cargo"]
+        for i, label in enumerate(labels):
+            tk.Label(detail_window, text=label).pack(pady=5)
+            entry = tk.Entry(detail_window, textvariable=edit_vars[i])
+            entry.pack(pady=5)
+
+        # Función para guardar los cambios
+        def save_changes():
+            new_values = [var.get() for var in edit_vars]
+            self.tree.item(selected_item[0], values=new_values)  # Actualizar el Treeview
+            detail_window.destroy()  # Cerrar la ventana de edición
+
+        # Botón para guardar cambios
+        save_button = tk.Button(detail_window, text="Guardar Cambios", command=save_changes)
+        save_button.pack(pady=10)
+
+        # Botón para cerrar la ventana sin guardar
+        close_button = tk.Button(detail_window, text="Cerrar", command=detail_window.destroy)
+        close_button.pack(pady=5)
 
     def generate_images(self):
         """Genera imágenes para todos los carnets seleccionados en el Tree view."""
