@@ -1,36 +1,146 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Carnet</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            padding: 20px;
-			font: 10pt
+            padding: 10px;
+            margin: 0px;
+            font: 10pt;
         }
+    
         .carnet {
-                border: 1px solid #000;
-    padding: 15px;
-    width: 5.4cm;
-    height: 8.4cm;
-	border-top-width: 1px;
-    margin-top: 0px;
-    padding-top: 1cm;
-    padding-right: 0.756cm;
-    padding-left: 0.756cm;
-    padding-bottom: 0.756cm;
+            position: relative;
+            border: 1px solid #000;
+
+
+padding: 0; /* Eliminar padding */
+
+width: 6.912cm; /* Ancho total con padding */
+
+height: 10.156cm; /* Alto total con padding */
+
+
+            background-image: url('{{ imagen_url }}');
+            background-size: contain;
+            background-position: center;
         }
+    
+        .carnet div {
+            position: absolute;
+            box-sizing: border-box; /* Incluye padding y border en el width y height */
+        }
+
+        div p {
+            position: absolute;
+            margin: 0;
+            color: #000000; /* Color del texto */
+            text-align: center; /* Centra el texto horizontalmente */
+            overflow: hidden; /* Oculta el texto que se desborda */
+            text-overflow: ellipsis; /* Muestra puntos suspensivos si el texto es demasiado largo */
+            width: 100%;
+            max-width: 100%; /* No exceder el ancho del padre */
+            max-height: 100%; /* No exceder la altura del padre */
+            font-family: "Times New Roman"; /* Establecer Times como fuente predeterminada */
+        }
+
+        .qr-container {
+            top: 280px; /* Distancia desde la parte superior */
+            left: 21px; /* Distancia desde la izquierda */
+            width: 92px;
+            height: 92px;
+        }
+
+        .qr-code {
+
+width: 90px; /* Ajusta el tamaño del código QR */
+
+height: auto; /* Mantiene la proporción */
+
+}
+    
+        .Nombre {
+            top: 112px; /* Posición desde la parte superior */
+            left: 139px; /* Posición desde la izquierda */
+            width: 91px; /* Ancho fijo para el nombre */
+            height: 48px; /* Alto fijo para el nombre */
+        }
+
+        .Nombre p {
+            top: 50%;
+            font-size: 13px; /* Tamaño de fuente */
+            font-weight: bold; /* Negrita */
+        }
+    
+        .Cedula {
+            top: 165px; /* Posición desde la parte superior */
+            left: 139px; /* Posición desde la izquierda */
+            width: 91px; /* Ancho fijo para la cédula */
+            height: 30px; /* Alto fijo para la cédula */
+        }
+
+        .Cedula p {
+            top: 50%;
+
+            font-size: 10px; /* Tamaño de fuente más pequeño */
+
+        }
+    
+        .Adscrito {
+            top: 219px; /* Posición desde la parte superior */
+            left: 20px; /* Posición desde la izquierda */
+            width: 220px; /* Ancho fijo para el adscrito */
+            height: 25px; /* Alto fijo para el adscrito */
+        }
+
+        .Adscrito p {
+            font-size: 10px; /* Tamaño de fuente */
+            top: 50%;
+        }
+    
+        .Cargo {
+            top: 247px; /* Posición desde la parte superior */
+            left: 21px; /* Posición desde la izquierda */
+            width: 220px; /* Ancho fijo para el cargo */
+            height: 30px; /* Alto fijo para el cargo */
+            background-color: {{ color }} ;
+            
+        }
+
+        .Cargo p {
+            top: 50%;
+
+            font-size: 12px; /* Tamaño de fuente específico para el cargo */
+        }
+
     </style>
+    <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="carnet">
-        <h1>Carnet</h1>
-        <p><strong>Nombre:</strong> {{ data_row['Nombre'] }}</p>
-        <p><strong>Apellidos:</strong> {{ data_row['Apellidos'] }}</p>
-        <p><strong>Cédula:</strong> {{ data_row['Cedula'] }}</p>
-        <p><strong>Adscrito:</strong> {{ data_row['Adscrito'] }}</p>
-        <p><strong>Cargo:</strong> {{ data_row['Cargo'] }}</p>
-        <p><strong>Tipo:</strong> {{ data_row['Tipo'] }}</p>
+        <div class="qr-container">
+            <img src="{{ qr_data }}" alt="Código QR" class="qr-code">
+        </div>
+        <div class="Nombre">
+            <p>{{ data_row['Nombre'] }}</p>
+        </div>
+
+        <div class="Cedula">
+            <p >V-{{ data_row['Cedula'] }}</p>
+        </div>
+
+        <div class="Adscrito">
+            <p>{{ data_row['Adscrito'] }}</p>
+        </div>
+
+        <div class="Cargo">
+            <p >{{ data_row['Cargo'] }}</p>
+
+        </div>
     </div>
 </body>
+
 </html>
