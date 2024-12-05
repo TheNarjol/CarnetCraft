@@ -60,8 +60,8 @@
         }
 
         .Nombre p {
-            top: 50%;
-            font-size: 13px; /* Tamaño de fuente */
+            top: 15%;
+            font-size: 15px; /* Tamaño de fuente */
             font-weight: bold; /* Negrita */
         }
     
@@ -73,10 +73,8 @@
         }
 
         .Cedula p {
-            top: 50%;
-
-            font-size: 10px; /* Tamaño de fuente más pequeño */
-
+            top: 25%;
+            font-size: 14px; /* Tamaño de fuente más pequeño */
         }
     
         .Adscrito {
@@ -101,9 +99,9 @@
         }
 
         .Cargo p {
-            top: 50%;
-
-            font-size: 12px; /* Tamaño de fuente específico para el cargo */
+            top: 25%;
+            color: white;
+            font-size: 16px; /* Tamaño de fuente específico para el cargo */
         }
 
         .Foto-container {
@@ -149,7 +147,7 @@
             <img src="{{ qr_data }}" alt="Código QR" class="qr-code">
         </div>
         <div class="Nombre">
-            <p>{{ data_row['Nombre'] }}</p>
+            <p>{{ data_row['Nombre'] }}  {{ data_row['Apellidos'] }}</p>
         </div>
 
         <div class="Cedula">
