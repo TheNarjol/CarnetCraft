@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Carnet</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+            margin: 0px;
+            font: 10pt;
+        }
+    
+        .carnet {
+            position: relative;
+            border: 1px solid #000;
+            padding: 0; /* Eliminar padding */
+            width: 6.912cm; /* Ancho total con padding */
+            height: 10.156cm; /* Alto total con padding */
+            background-image: url('{{ imagen_url }}');
+            background-size: contain;
+            background-position: cover;
+        }
+    
+        .carnet div {
+            position: absolute;
+            box-sizing: border-box; /* Incluye padding y border en el width y height */
+        }
+
+        div p {
+            position: absolute;
+            margin: 0;
+            color: #000000; /* Color del texto */
+            text-align: center; /* Centra el texto horizontalmente */
+            overflow: hidden; /* Oculta el texto que se desborda */
+            text-overflow: ellipsis; /* Muestra puntos suspensivos si el texto es demasiado largo */
+            width: 100%;
+            max-width: 100%; /* No exceder el ancho del padre */
+            max-height: 100%; /* No exceder la altura del padre */
+            font-family: "Times New Roman"; /* Establecer Times como fuente predeterminada */
+        }
+
+        .qr-container {
+            top: 280px; /* Distancia desde la parte superior */
+            left: 21px; /* Distancia desde la izquierda */
+            width: 92px;
+            height: 92px;
+        }
+
+        .qr-code {
+            width: 90px; /* Ajusta el tamaño del código QR */
+            height: auto; /* Mantiene la proporción */
+        }
+    
+        .Nombre {
+            top: 112px; /* Posición desde la parte superior */
+            left: 139px; /* Posición desde la izquierda */
+            width: 91px; /* Ancho fijo para el nombre */
+            height: 48px; /* Alto fijo para el nombre */
+        }
+
+        .Nombre p {
+            top: 15%;
+            font-size: 15px; /* Tamaño de fuente */
+            font-weight: bold; /* Negrita */
+        }
+    
+        .Cedula {
+            top: 165px; /* Posición desde la parte superior */
+            left: 139px; /* Posición desde la izquierda */
+            width: 91px; /* Ancho fijo para la cédula */
+            height: 30px; /* Alto fijo para la cédula */
+        }
+
+        .Cedula p {
+            top: 25%;
+            font-size: 14px; /* Tamaño de fuente más pequeño */
+        }
+    
+        .Adscrito {
+            top: 219px; /* Posición desde la parte superior */
+            left: 20px; /* Posición desde la izquierda */
+            width: 220px; /* Ancho fijo para el adscrito */
+            height: 25px; /* Alto fijo para el adscrito */
+        }
+
+        .Adscrito p {
+            font-size: 10px; /* Tamaño de fuente */
+            top: 50%;
+        }
+    
+        .Cargo {
+            top: 247px; /* Posición desde la parte superior */
+            left: 21px; /* Posición desde la izquierda */
+            width: 220px; /* Ancho fijo para el cargo */
+            height: 30px; /* Alto fijo para el cargo */
+            background-color: {{ color }} ;
+            
+        }
+
+        .Cargo p {
+            top: 25%;
+            color: white;
+            font-size: 16px; /* Tamaño de fuente específico para el cargo */
+        }
+
+        .Foto-container {
+            top: 95px; /* Distancia desde la parte superior */
+            left: 20px; /* Distancia desde la izquierda */
+            width: 110px;
+            height: 110px;
+            background-color:
+        }
+
+        .hexagon {
+            overflow: hidden;
+            width: 110px;
+            height: 110px;
+        }
+
+        .hexagon rect {
+            width: 2px;
+            height: 2px;
+            fill: #000;
+        }
+    </style>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    
+    <div class="carnet">
+        <div class="Foto-container ">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">
+                <path d="M0.5,0.0005C0.475,0.0005,0.4495,0.005,0.4255,0.0145c-0.038,0.0145-0.091,0.039-0.159,0.0785c-0.068,0.0395-0.1155,0.0735-0.147,0.0994 C0.08,0.2245,0.0535,0.2705,0.0455,0.3215c-0.0065,0.0405-0.012,0.099-0.012,0.179c0,0.079,0.0055,0.1375,0.012,0.178c0.008,0.0515,0.0345,0.0969,0.0745,0.1295 c0.032,0.026,0.079,0.06,0.147,0.0994c0.068,0.0395,0.1215,0.064,0.1595,0.079c0.048,0.0185,0.1005,0.0185,0.148-0.0005c0.038-0.0145,0.091-0.039,0.159-0.079c0.068-0.0395,0.1155-0.0735,0.147-0.0994c0.0395-0.0325,0.0665-0.0785,0.0745-0.1295c0.0065-0.0405,0.012-0.099,0.012-0.179c-0.0005-0.079-0.006-0.1369-0.012-0.178c-0.008-0.0515-0.0345-0.0969-0.0745-0.1295c-0.032-0.026-0.079-0.06-0.147-0.0994C0.665,0.053,0.612,0.0285,0.574,0.0139C0.55,0.005,0.525,0.0005,0.5,0.0005z"
+                            fill="url(#6f906d37-57f1-48dc-8144-20e47e205c62)"></path>
+                <defs>
+                    <pattern id="6f906d37-57f1-48dc-8144-20e47e205c62" x="0" y="0" width="1" height="1" viewBox="0 0 1 1">
+                    <rect x="0" y="-0.035"></rect>
+                </pattern>
+                </defs>
+            </svg>
+        </div>
+        <image xlink:href=" {{ ruta_imagen }} " x="-0.035" width="1.07" height="1.07" y="-0.035" preserveAspectRatio="xMidYMid slice"/>
+
+        <div class="qr-container">
+            <img src="{{ qr_data }}" alt="Código QR" class="qr-code">
+        </div>
+        <div class="Nombre">
+            <p>{{ data_row['Nombre'] }}  {{ data_row['Apellidos'] }}</p>
+        </div>
+
+        <div class="Cedula">
+            <p >V-{{ data_row['Cedula'] }}</p>
+        </div>
+
+        <div class="Adscrito">
+            <p>{{ data_row['Adscrito'] }}</p>
+        </div>
+
+        <div class="Cargo">
+            <p >{{ data_row['Cargo'] }}</p>
+
+        </div>
+    </div>
+</body>
+
+</html>
