@@ -15,6 +15,37 @@ Para instalar y ejecutar el proyecto, asegúrate de tener instalado Python 3.10.
     pip install -r requirements.txt
     ```
 
+## SQL
+CREATE DATABASE carnets_db;
+USE carnets_db;
+
+CREATE TABLE oficinas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    nomenclatura VARCHAR(50) NOT NULL UNIQUE
+);
+
+CREATE TABLE trabajadores (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    cedula VARCHAR(20) NOT NULL UNIQUE,
+    id_oficina INT NOT NULL,
+    cargo VARCHAR(100) NOT NULL,
+    tipo_cargo VARCHAR(50) NOT NULL,
+    foto BLOB,  -- Para almacenar la foto como un archivo binario
+    FOREIGN KEY (id_oficina) REFERENCES oficinas(id)  -- Relación con la tabla de oficinas
+
+);
+
+CREATE TABLE carnets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_trabajador INT NOT NULL,
+    fecha_emision DATE NOT NULL,
+    fecha_expiracion DATE NOT NULL,
+    correlativo INT NOT NULL UNIQUE,
+    FOREIGN KEY (id_trabajador) REFERENCES trabajadores(id)  -- Relación con la tabla de trabajadores
+);
 
 ## Uso
 Para ejecutar el generador de carnets, dirígete al directorio donde se encuentra el script y ejecuta el siguiente comando:

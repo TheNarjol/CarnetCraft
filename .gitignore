@@ -6,6 +6,8 @@
 # Entornos virtuales de Python
 venv/
 .venv/
+a/
+.a/
 
 # Archivos de compilación y cachés
 __pycache__/
@@ -34,6 +36,8 @@ build/
 wkhtmltox/
 
 # Ignorar archivos PDF generados
+data/
+
 *.pdf
 
 # Archivos de configuración de Notepad++
