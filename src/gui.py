@@ -229,6 +229,11 @@ class ImageGeneratorApp:
         file_path = filedialog.askopenfilename(
             filetypes=[("Excel files", "*.xlsx;*.xls")]
         )
+        file_path = filedialog.askopenfilename(
+            filetypes=[
+                ("Archivos de imagen", 
+                 "*.png;*.jpg;*.jpeg;*.gif")
+                 ])
 
         if file_path:
             try:

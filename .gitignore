@@ -37,6 +37,7 @@ wkhtmltox/
 
 # Ignorar archivos PDF generados
 data/
+other/
 
 *.pdf
 
