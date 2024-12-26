@@ -2,6 +2,7 @@ import pandas as pd # type: ignore
 import tkinter as tk
 import os
 import logging
+import json
 from tkinter import filedialog, messagebox, Menu
 from tkinter import ttk
 import traceback
@@ -23,15 +24,24 @@ class ImageGeneratorApp:
     def __init__(self, root):
         """Inicializa la aplicación de generación de carnets de imagen."""
         self.root = root
+        self.load_settings()  # Cargar configuraciones al iniciar
         self.root.title("Carnet Craft")
+        
         # Crear una barra de menú
         self.menu_bar = Menu(root)
         self.root.config(menu=self.menu_bar)
+        
         # Agregar un menú de archivo
         file_menu = Menu(self.menu_bar, tearoff=0)
         file_menu.add_command(
             label="Importar archivo Excel", command=self.load_file)
         self.menu_bar.add_cascade(label="Archivo", menu=file_menu)
+        
+        # Agregar un menú de editar
+        edit_menu = Menu(self.menu_bar, tearoff=0)
+        edit_menu.add_command(label="Configuraciones", command=self.open_settings_window)
+        self.menu_bar.add_cascade(label="Editar", menu=edit_menu)
+        
         # Botón para seleccionar o deseleccionar todos
         self.select_all_button = tk.Button(
             root,
@@ -78,6 +88,43 @@ class ImageGeneratorApp:
         # Instancia del generador de imágenes
         self.image_generator = ImageGenerator()
 
+    def open_settings_window(self):
+        """Abre una ventana para configurar las opciones de la aplicación."""
+        settings_window = tk.Toplevel(self.root)
+        settings_window.title("Configuraciones")
+
+        # Cargar configuraciones actuales
+        app_title_var = tk.StringVar(value=self.root.title())
+        bg_color_var = tk.StringVar(value=self.root.cget("bg"))
+
+        # Ejemplo de configuración: Cambiar el título de la aplicación
+        tk.Label(settings_window, text="Título de la Aplicación:").grid(row=0, column=0, padx=5, pady=5, sticky='e')
+        tk.Entry(settings_window, textvariable=app_title_var).grid(row=0, column=1, padx=5, pady=5)
+
+        # Ejemplo de configuración: Cambiar el color de fondo
+        tk.Label(settings_window, text="Color de Fondo:").grid(row=1, column=0, padx=5, pady=5, sticky='e')
+        tk.Entry(settings_window, textvariable=bg_color_var).grid(row=1, column=1, padx=5, pady=5)
+
+        # Botón para guardar configuraciones
+        def save_settings():
+            """Guarda las configuraciones y cierra la ventana."""
+            new_title = app_title_var.get()
+            new_bg_color = bg_color_var.get()
+            
+            # Aplicar configuraciones
+            self.root.title(new_title)
+            self.root.config(bg=new_bg_color)
+            
+            # Guardar configuraciones en el archivo
+            self.save_settings(new_title, new_bg_color)
+            
+            settings_window.destroy()  # Cerrar la ventana
+
+        tk.Button(settings_window, text="Guardar", command=save_settings).grid(row=2, column=0, columnspan=2, pady=10)
+
+        # Botón para cancelar
+        tk.Button(settings_window, text="Cancelar", command=settings_window.destroy).grid(row=3, column=0, columnspan=2, pady=5)
+        
     def open_entry_window(self, title, item_values=None):
         """Abre una ventana para ingresar o editar los detalles de un producto."""
         detail_window = tk.Toplevel(self.root)
@@ -218,6 +265,28 @@ class ImageGeneratorApp:
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
+    def load_settings(self):
+        """Carga las configuraciones desde un archivo JSON."""
+        try:
+            with open('settings.json', 'r') as f:
+                settings = json.load(f)
+                self.root.title(settings.get("app_title", "Carnet Craft"))
+                self.root.config(bg=settings.get("bg_color", "white"))
+        except FileNotFoundError:
+            # Si el archivo no existe, se utilizarán los valores predeterminados
+            pass
+        except json.JSONDecodeError:
+            messagebox.showerror("Error", "Error al cargar las configuraciones.")
+
+    def save_settings(self, app_title, bg_color):
+        """Guarda las configuraciones en un archivo JSON."""
+        settings = {
+            "app_title": app_title,
+            "bg_color": bg_color
+        }
+        with open('settings.json', 'w') as f:
+            json.dump(settings, f)
+            
     def show_confirmation_window(self):
         """Muestra una ventana de confirmación con los datos cargados."""
         confirmation_window = tk.Toplevel(self.root)
