@@ -24,6 +24,7 @@ logging.basicConfig(
 # Obtener la ruta absoluta de la imagen
 imagen_url = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
+    "templates",
     "PLANTILLA.png"
 )
 
@@ -54,7 +55,7 @@ class ImageGenerator:
                     "wkhtmltopdf.exe",
                 )
             else:  # Asumir que es Linux
-                return "/usr/bin/wkhtmltopdf"  # Asegúrate de que wkhtmltopdf esté en el PATH
+                return "/usr/bin/wkhtmltoimage"  # Asegúrate de que wkhtmltopdf esté en el PATH
         except Exception as e:
             logging.error(f"Error al obtener la ruta de wkhtmltopdf: {str(e)}")
             raise
