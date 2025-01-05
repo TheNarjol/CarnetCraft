@@ -535,6 +535,7 @@ class ImageGeneratorApp:
             # Abrir la ventana de edición con los valores actuales
             self.open_entry_window("Editar Entrada", item_values)
 
+
 class SettingsWindow:
     def __init__(self, root, app):
         """Inicializa la ventana de configuración."""
@@ -596,25 +597,69 @@ class EntryDetailWindow:
         self.detail_window = tk.Toplevel(self.root)
         self.detail_window.title(title)
         
+        # Set the size of the EntryDetailWindow
+        self.detail_window.geometry("270x430")
+
+        # Make the EntryDetailWindow stay on top
+        self.detail_window.wm_transient(self.root)
+        
+        # Center the EntryDetailWindow on the parent window
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (300 // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (200 // 2)
+        self.detail_window.geometry(f"+{x}+{y}")
+        
+        self.detail_window.resizable(False, False)
+        # Set the focus to the EntryDetailWindow and prevent interaction with the main window
+    
         # Variables para los campos de entrada
         self.edit_vars = [tk.StringVar(value=value) for value in (item_values or [""] * 6)]
         self.item_id = None if item_values is None else self.app.tree.selection()[0]
         self.image_display = None
+        self.image_path = self.edit_vars[5].get()  # Ruta de la imagen
+        
+        # Cargar la imagen por defecto
         self.create_ui()
+        self.load_image()
 
+        # Agregar un evento para cuando se hace clic en la ventana principal
+        self.root.bind("<1>", self.on_root_click)
+        # Asegurarse de que la ventana esté visible antes de llamar a grab_set
+        self.detail_window.update()  # Forzar la actualización de la ventana
+        self.detail_window.grab_set()  # Establecer el foco en la ventana secundaria
+        
+    def on_root_click(self, event):
+        # Setear el foco a la ventana principal
+        self.root.focus_set()
+        
+        # Producir un sonido o parpadeo visual
+        self.root.bell()
+    
+    def load_default_image(self):
+        """Carga una imagen en blanco de 100x100 por defecto."""
+        img = Image.new('RGB', (100, 100), color=(255, 255, 255))  # Crear una imagen en blanco
+        img.thumbnail((100, 100))
+        img_tk = ImageTk.PhotoImage(img)
+        self.image_display.config(image=img_tk)
+        self.image_display.image = img_tk
+        self.edit_vars[5].set("")
+    
     def create_ui(self):
         """Crea la interfaz de usuario para la ventana de entrada/detalle."""
-        labels = ["Nombre", "Apellidos", "Cedula", "Adscrito", "Cargo", "Ruta Imagen"]
+        labels = ["Nombre", "Apellidos", "Cédula", "Adscrito", "Cargo"]
         for i, label in enumerate(labels):
             tk.Label(self.detail_window, text=label).grid(row=i, column=0, padx=5, pady=5, sticky='e')
             tk.Entry(self.detail_window, textvariable=self.edit_vars[i]).grid(row=i, column=1, padx=5, pady=5)
 
-        # Label para mostrar la imagen
+        # Label para mostrar la miniatura de la imagen
         self.image_display = tk.Label(self.detail_window, bd=2, relief="sunken")
-        self.image_display.grid(row=len(labels), column=1, columnspan=2, pady=10)
+        self.image_display.grid(row=len(labels), column=0, columnspan=2, padx=5, pady=10)
+
+        # Label para mostrar la ruta de la imagen (no editable)
+        self.image_path_label = tk.Label(self.detail_window, text="", bd=2, relief="sunken", wraplength=200)
+        self.image_path_label.grid(row=len(labels) + 1, column=0, columnspan=2, padx=5, pady=5)
 
         # Botón para seleccionar la imagen
-        tk.Button(self.detail_window, text="Seleccionar Imagen", command=self.select_image).grid(row=len(labels), column=0, pady=5)
+        tk.Button(self.detail_window, text="Seleccionar Imagen", command=self.select_image).grid(row=len(labels) + 2, column=0, columnspan=2, padx=5, pady=5)
 
         # Botón para guardar nueva entrada o cambios
         action = "Guardar Nueva Entrada" if self.item_values is None else "Guardar Cambios"
@@ -630,11 +675,8 @@ class EntryDetailWindow:
             self.detail_window,
             text=action,
             command=save_command
-        ).grid(row=len(labels) + 2, column=0, columnspan=2, pady=5)
-        # Cargar imagen si se está editando
-        if self.item_values:
-            self.load_image(self.item_values[5])
-
+        ).grid(row=len(labels) + 3, column=0, columnspan=2, padx=5, pady=5)
+    
     def select_image(self):
         """Selecciona una imagen para el carnet con manejo de excepciones."""
         file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png *.jpg *.jpeg")])
@@ -645,23 +687,29 @@ class EntryDetailWindow:
                 img_tk = ImageTk.PhotoImage(img)
                 self.image_display.config(image=img_tk)
                 self.image_display.image = img_tk
-                self.edit_vars[5].set(file_path)
+                self.edit_vars[5].set(file_path)  # Update the image path variable
+                self.image_path_label.config(text=os.path.basename(file_path))  # Muestra solo el nombre del archivo
             except Exception as e:
                 messagebox.showerror("Error", f"No se pudo cargar la imagen: {str(e)}")
+                self.load_default_image()  # Cargar la imagen por defecto si hay un error
 
-    def load_image(self, img_path):
-        """Carga y muestra la imagen en el label con manejo de excepciones."""
-        if os.path.isfile(img_path):
-            try:
-                img = Image.open(img_path)
+    def load_image(self):
+        """Carga la imagen en la interfaz."""
+        try:
+            # Check if the image_path is a valid file and not a directory
+            if os.path.isfile(self.image_path):
+                img = Image.open(self.image_path)
                 img.thumbnail((100, 100))
                 img_tk = ImageTk.PhotoImage(img)
                 self.image_display.config(image=img_tk)
                 self.image_display.image = img_tk
-            except Exception as e:
-                messagebox.showerror("Error", f"No se pudo cargar la imagen: {str(e)}")
-        else:
-            messagebox.showerror("Error", "La ruta de la imagen no es válida.")
+                self.image_path_label.config(text=os.path.basename(self.image_path))  # Muestra solo el nombre del archivo
+            else:
+                print(f"Invalid image path: {self.image_path}")
+                self.load_default_image()
+        except Exception as e:
+            print(f"Error al cargar la imagen: {e}")
+            self.load_default_image()  # Cargar la imagen por defecto si hay un error
 
     def save_entry(self, edit_vars, detail_window, item_id=None):
         """Guarda una entrada en el Treeview después de validar los campos."""
@@ -697,6 +745,7 @@ class EntryDetailWindow:
         # Actualizar colores de las filas
         self.app.update_row_colors()  # Actualizar colores después de agregar una nueva entrada
         self.app.update_sidebar()
+    
     def save_changes(self, edit_vars, item_id, detail_window):
         """Guarda los cambios en una entrada existente."""
         self.save_entry(edit_vars, detail_window, item_id)
