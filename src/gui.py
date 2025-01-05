@@ -134,16 +134,19 @@ class ImageGeneratorApp:
         self.new_entry_button.pack(pady=5, anchor="w", padx=10)
 
     def create_sidebar(self):
-        # Crear el sidebar con un tamaño máximo
+        """Crea el sidebar con los labels y el botón de editar."""
+        # Crear el sidebar
         self.sidebar = tk.Frame(self.main_frame, width=200, bg="lightgray")
         self.sidebar.pack(side="right", fill="y", padx=10, pady=10)
+        self.sidebar.pack_propagate(False)  # Evitar que el sidebar se expanda automáticamente
 
-        # Desactivar la propagación de tamaño para evitar que el sidebar se expanda demasiado
-        self.sidebar.pack_propagate(False)
+        # Label para mostrar el estado de la selección (ninguna, una o múltiple)
+        self.selection_status_label = tk.Label(
+            self.sidebar, text="Ninguna selección", bg="lightgray", font=("Arial", 12, "bold")
+        )
+        self.selection_status_label.pack(pady=10)
 
-        # Establecer un tamaño máximo para el sidebar
-        self.sidebar.config(width=200, height=400)  # Ancho máximo de 200, altura máxima de 400
-        # Etiquetas para mostrar los detalles de la fila seleccionada
+        # Labels para los detalles de la fila seleccionada
         self.sidebar_labels = {
             "Nombre": tk.Label(self.sidebar, text="Nombre:", bg="lightgray"),
             "Apellidos": tk.Label(self.sidebar, text="Apellidos:", bg="lightgray"),
@@ -152,13 +155,22 @@ class ImageGeneratorApp:
             "Cargo": tk.Label(self.sidebar, text="Cargo:", bg="lightgray"),
         }
 
-        # Colocar las etiquetas en el sidebar
+        # Colocar los labels en el sidebar
         for label in self.sidebar_labels.values():
             label.pack(pady=5)
+            label.pack_forget()  # Ocultar los labels por defecto
+
 
         # Label para mostrar la miniatura de la imagen
         self.image_display = tk.Label(self.sidebar, bd=2, relief="sunken", bg="white")
         self.image_display.pack(pady=10)
+        self.image_display.pack_forget()  # Ocultar la imagen por defecto
+
+        # Botón para editar
+        self.edit_button = tk.Button(
+            self.sidebar, text="Editar", command=self.open_edit_window, state="disabled"
+        )
+        self.edit_button.pack(side="bottom", fill="x", pady=5)  # Pegar al borde inferior
 
         # Asociar el evento de selección con el método update_sidebar
         self.tree.bind("<<TreeviewSelect>>", self.update_sidebar)
@@ -179,29 +191,51 @@ class ImageGeneratorApp:
         self.tipo_carnet_combobox.pack(pady=5, anchor="w", padx=10)
 
     def update_sidebar(self, event=None):
-        """Actualiza el sidebar con los detalles de la fila seleccionada."""
-        selected_item = self.tree.selection()
-        if selected_item:
-            item_values = self.tree.item(selected_item, 'values')
-            
-            # Actualizar las etiquetas con los valores de la fila seleccionada
-            self.sidebar_labels["Nombre"].config(text=f"Nombre: {item_values[0]}")
+        """Actualiza el sidebar según la selección en el Treeview."""
+        selected_items = self.tree.selection()  # Obtener las filas seleccionadas
+
+        if len(selected_items) == 0:
+            # Ninguna fila seleccionada
+            self.selection_status_label.config(text="Ninguna selección")
+            self.selection_status_label.pack(pady=10)  # Mostrar el label
+            for label in self.sidebar_labels.values():
+                label.pack_forget()  # Ocultar los labels de detalles
+            self.clear_image_display()  # Limpiar la imagen
+            self.edit_button.config(state="disabled")  # Desactivar el botón "Editar"
+        elif len(selected_items) == 1:
+            # Una fila seleccionada
+            self.selection_status_label.pack_forget()  # Ocultar el label de estado
+            for label in self.sidebar_labels.values():
+                label.pack(pady=5)  # Mostrar los labels de detalles
+
+            # Mostrar los detalles de la fila seleccionada
+            item_values = self.tree.item(selected_items[0], 'values')
+            self.sidebar_labels["Nombre"].config(text=f"Nombre: {item_values[0 ]}")
             self.sidebar_labels["Apellidos"].config(text=f"Apellidos: {item_values[1]}")
             self.sidebar_labels["Cedula"].config(text=f"Cédula: {item_values[2]}")
             self.sidebar_labels["Adscrito"].config(text=f"Adscrito: {item_values[3]}")
             self.sidebar_labels["Cargo"].config(text=f"Cargo: {item_values[4]}")
 
-            # Verificar si hay una ruta de imagen
-            ruta_imagen = item_values[5] if len(item_values) > 5 else None
-
-            if ruta_imagen and os.path.isfile(ruta_imagen):  # Verificar si la ruta existe y es válida
-                self.load_image_thumbnail(ruta_imagen)
+            self.image_display.pack()  # Mostrar la imagen
+            if item_values[5]:  # Verificar si el campo no está vacío
+                self.load_image_thumbnail(item_values[5])  # Método para actualizar la imagen
             else:
-                # Limpiar la imagen si no hay ruta o el archivo no existe
                 self.clear_image_display()
+            self.edit_button.config(state="normal")  # Activar el botón "Editar"
+            self.edit_button.pack(side="bottom", fill="x", pady=5)  # Asegurarse de que el botón esté visible
+
+        else:
+            # Selección múltiple
+            self.selection_status_label.config(text="Selección múltiple")
+            self.selection_status_label.pack(pady=10)  # Mostrar el label
+            for label in self.sidebar_labels.values():
+                label.pack_forget()  # Ocultar los labels de detalles
+            self.clear_image_display()  # Limpiar la imagen
+            self.edit_button.config(state="disabled")  # Desactivar el botón "Editar"
 
     def load_image_thumbnail(self, img_path):
         """Carga y muestra la miniatura de la imagen en el sidebar."""
+        
         try:
             img = Image.open(img_path)
             img.thumbnail((100, 100))  # Redimensionar la imagen
@@ -215,7 +249,6 @@ class ImageGeneratorApp:
 
     def clear_image_display(self):
         """Limpia la imagen mostrada en el sidebar y carga una imagen en blanco por defecto."""
-        # Limpiar la imagen actual
         self.image_display.config(image=None)
         self.image_display.image = None  # Eliminar la referencia a la imagen anterior
 
@@ -494,6 +527,13 @@ class ImageGeneratorApp:
             tag = self.validate_row(values)
             self.tree.item(item, tags=(tag,))
 
+    def open_edit_window(self):
+        """Abre la ventana de edición para la fila seleccionada."""
+        selected_item = self.tree.selection()  # Obtener la fila seleccionada
+        if selected_item:  # Verificar si hay una fila seleccionada
+            item_values = self.tree.item(selected_item, 'values')  # Obtener los valores de la fila
+            # Abrir la ventana de edición con los valores actuales
+            self.open_entry_window("Editar Entrada", item_values)
 
 class SettingsWindow:
     def __init__(self, root, app):
@@ -664,7 +704,6 @@ class EntryDetailWindow:
     def save_new_entry(self, edit_vars, detail_window):
         """Guarda una nueva entrada en el Treeview."""
         self.save_entry(edit_vars, detail_window)
-
 
 
 if __name__ == "__main__":
