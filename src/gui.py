@@ -107,9 +107,6 @@ class ImageGeneratorApp:
             item_values = self.tree.item(selected_item, 'values')
             self.open_entry_window("Editar Entrada", item_values)
     
-    def save_new_entry(self, edit_vars, detail_window):
-        self.save_entry(edit_vars, detail_window)
-
     def toggle_select_all(self):
         """Selecciona o deselecciona todos los carnets en el Treeview."""
         if len(self.tree.selection()) == len(self.tree.get_children()):
@@ -431,13 +428,34 @@ class EntryDetailWindow:
             self.image_display.image = img_tk
 
     def save_new_entry(self):
-        """Guarda una nueva entrada en el Treeview."""
-        self.app.save_new_entry(self.edit_vars, self.detail_window)
+        """Guarda una nueva entrada en el Treeview después de validar la cédula."""
+        cedula = self.edit_vars[2].get()  # Obtener el valor de la cédula
+        if not self.app.is_valid_cedula(cedula):
+            messagebox.showerror("Error", "La cédula debe contener solo números y tener 7 u 8 dígitos.")
+            return  # Detener el proceso si la cédula no es válida
 
-    def save_changes(self, edit_vars, item_id, detail_window):
+        values = [var.get() for var in self.edit_vars]  # Obtener los valores de los campos
+        self.app.tree.insert("", "end", values=values)  # Insertar en el Treeview
+        self.detail_window.destroy()  # Cerrar la ventana de detalle
+
+    def save_changes (self):
+        """Guarda los cambios en una entrada existente después de validar la cédula."""
+        cedula = self.edit_vars[2].get()  # Obtener el valor de la cédula
+        if not self.app.is_valid_cedula(cedula):
+            messagebox.showerror("Error", "La cédula debe contener solo números y tener 7 u 8 dígitos.")
+            return  # Detener el proceso si la cédula no es válida
+
+        # Lógica para guardar los cambios en la entrada existente
+        values = [var.get() for var in self.edit_vars]  # Obtener los valores de los campos
+        selected_item = self.app.tree.selection()[0]  # Obtener el elemento seleccionado
+        self.app.tree.item(selected_item, values=values)  # Actualizar el Treeview
+        self.detail_window.destroy()  # Cerrar la ventana de detalle
+
         """Guarda los cambios en una entrada existente en el Treeview."""
-        self.app.save_changes(edit_vars, item_id, detail_window)
-
+        selected_item = self.app.tree.selection()[0]  # Obtener el ítem seleccionado
+        values = [var.get() for var in self.edit_vars]  # Obtener los valores de los campos
+        self.app.tree.item(selected_item, values=values)  # Actualizar el ítem en el Treeview
+        self.detail_window.destroy()  # Cerrar la ventana de detalle
 
 if __name__ == "__main__":
     root = tk.Tk()
