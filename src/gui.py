@@ -408,54 +408,86 @@ class EntryDetailWindow:
             self.load_image(self.item_values[5])
 
     def select_image(self):
-        """Selecciona una imagen para el carnet."""
+        """Selecciona una imagen para el carnet con manejo de excepciones."""
         file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png *.jpg *.jpeg")])
         if file_path:
-            self.edit_vars[5].set(file_path)
-            img = Image.open(file_path)
-            img.thumbnail((100, 100))
-            img_tk = ImageTk.PhotoImage(img)
-            self.image_display.config(image=img_tk)
-            self.image_display.image = img_tk
+            try:
+                img = Image.open(file_path)
+                img.thumbnail((100, 100))
+                img_tk = ImageTk.PhotoImage(img)
+                self.image_display.config(image=img_tk)
+                self.image_display.image = img_tk
+                self.edit_vars[5].set(file_path)
+            except Exception as e:
+                messagebox.showerror("Error", f"No se pudo cargar la imagen: {str(e)}")
 
     def load_image(self, img_path):
-        """Carga y muestra la imagen en el label."""
+        """Carga y muestra la imagen en el label con manejo de excepciones."""
         if os.path.isfile(img_path):
-            img = Image.open(img_path)
-            img.thumbnail((100, 100))
-            img_tk = ImageTk.PhotoImage(img)
-            self.image_display.config(image=img_tk)
-            self.image_display.image = img_tk
+            try:
+                img = Image.open(img_path)
+                img.thumbnail((100, 100))
+                img_tk = ImageTk.PhotoImage(img)
+                self.image_display.config(image=img_tk)
+                self.image_display.image = img_tk
+            except Exception as e:
+                messagebox.showerror("Error", f"No se pudo cargar la imagen: {str(e)}")
+        else:
+            messagebox.showerror("Error", "La ruta de la imagen no es válida.")
 
     def save_new_entry(self):
-        """Guarda una nueva entrada en el Treeview después de validar la cédula."""
-        cedula = self.edit_vars[2].get()  # Obtener el valor de la cédula
+        """Guarda una nueva entrada en el Treeview después de validar los campos obligatorios."""
+        nombre = self.edit_vars[0].get().strip()
+        apellidos = self.edit_vars[1].get().strip()
+        cedula = self.edit_vars[2].get().strip()
+
+        # Validar campos obligatorios
+        if not nombre or not apellidos or not cedula:
+            messagebox.showerror("Error", "Los campos Nombre, Apellidos y Cédula son obligatorios.")
+            return
+
+        # Validar la cédula
         if not self.app.is_valid_cedula(cedula):
             messagebox.showerror("Error", "La cédula debe contener solo números y tener 7 u 8 dígitos.")
-            return  # Detener el proceso si la cédula no es válida
+            return
 
-        values = [var.get() for var in self.edit_vars]  # Obtener los valores de los campos
-        self.app.tree.insert("", "end", values=values)  # Insertar en el Treeview
-        self.detail_window.destroy()  # Cerrar la ventana de detalle
+        # Obtener los valores de los campos
+        values = [var.get() for var in self.edit_vars]
 
-    def save_changes (self):
-        """Guarda los cambios en una entrada existente después de validar la cédula."""
-        cedula = self.edit_vars[2].get()  # Obtener el valor de la cédula
+        # Insertar en el Treeview
+        self.app.tree.insert("", "end", values=values)
+
+        # Cerrar la ventana de detalle
+        self.detail_window.destroy()
+
+    def save_changes(self):
+        """Guarda los cambios en una entrada existente después de validar los campos obligatorios."""
+        nombre = self.edit_vars[0].get().strip()
+        apellidos = self.edit_vars[1].get().strip()
+        cedula = self.edit_vars[2].get().strip()
+
+        # Validar campos obligatorios
+        if not nombre or not apellidos or not cedula:
+            messagebox.showerror("Error", "Los campos Nombre, Apellidos y Cédula son obligatorios.")
+            return
+
+        # Validar la cédula
         if not self.app.is_valid_cedula(cedula):
             messagebox.showerror("Error", "La cédula debe contener solo números y tener 7 u 8 dígitos.")
-            return  # Detener el proceso si la cédula no es válida
+            return
 
-        # Lógica para guardar los cambios en la entrada existente
-        values = [var.get() for var in self.edit_vars]  # Obtener los valores de los campos
-        selected_item = self.app.tree.selection()[0]  # Obtener el elemento seleccionado
-        self.app.tree.item(selected_item, values=values)  # Actualizar el Treeview
-        self.detail_window.destroy()  # Cerrar la ventana de detalle
+        # Obtener los valores de los campos
+        values = [var.get() for var in self.edit_vars]
 
-        """Guarda los cambios en una entrada existente en el Treeview."""
-        selected_item = self.app.tree.selection()[0]  # Obtener el ítem seleccionado
-        values = [var.get() for var in self.edit_vars]  # Obtener los valores de los campos
-        self.app.tree.item(selected_item, values=values)  # Actualizar el ítem en el Treeview
-        self.detail_window.destroy()  # Cerrar la ventana de detalle
+        # Obtener el elemento seleccionado
+        selected_item = self.app.tree.selection()[0]
+
+        # Actualizar el Treeview
+        self.app.tree.item(selected_item, values=values)
+
+        # Cerrar la ventana de detalle
+        self.detail_window.destroy()
+
 
 if __name__ == "__main__":
     root = tk.Tk()
