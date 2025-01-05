@@ -97,6 +97,10 @@ class ImageGeneratorApp:
         self.tipo_carnet_combobox.pack(pady=5, anchor="w", padx=10)
         # Instancia del generador de imágenes
         self.image_generator = ImageGenerator()
+        
+        # Configurar tags para colores
+        self.tree.tag_configure('missing_data', background='yellow')
+        self.tree.tag_configure('error_data', background='red')
 
     def open_settings_window(self):
         """Abre la ventana de configuración."""
@@ -116,7 +120,7 @@ class ImageGeneratorApp:
         if selected_item:
             item_values = self.tree.item(selected_item, 'values')
             self.open_entry_window("Editar Entrada", item_values)
-    
+
     def toggle_select_all(self):
         """Selecciona o deselecciona todos los carnets en el Treeview."""
         if len(self.tree.selection()) == len(self.tree.get_children()):
@@ -167,6 +171,7 @@ class ImageGeneratorApp:
                 self.show_confirmation_window()
             except Exception as e:
                 messagebox.showerror("Error", str(e))
+        self.update_row_colors()  # Actualizar colores después de cargar los datos
 
     def load_settings(self):
         """Carga las configuraciones desde un archivo JSON."""
@@ -224,6 +229,7 @@ class ImageGeneratorApp:
             ]
             self.tree.insert("", "end", values=values)
         confirmation_window.destroy()  # Cerrar la ventana de confirmación
+        self.update_row_colors()  # Actualizar colores después de cargar los datos
 
     def generate_images(self):
         """Genera imágenes para todos los carnets seleccionados en el Treeview."""
@@ -328,6 +334,38 @@ class ImageGeneratorApp:
     def is_valid_cedula(self, cedula):
         """Valida que la cédula contenga solo números y tenga 7 u 8 dígitos."""
         return cedula.isdigit() and len(cedula) in (7, 8)
+
+    def validate_row(self, values):
+        """
+        Valida si una fila tiene datos faltantes o errores.
+        Devuelve el tag correspondiente ('missing_data', 'error_data') o None si no hay problemas.
+        """
+        # Extraer valores
+        nombre = values[0]
+        apellidos = values[1]
+        cedula = values[2]
+        ruta_imagen = values[5]  # Índice 5 corresponde a la ruta de la imagen
+
+        # Verificar datos faltantes
+        if not nombre or not apellidos or not cedula or not ruta_imagen:
+            return 'missing_data'
+
+        # Verificar si la imagen existe
+        if not os.path.isfile(ruta_imagen):
+            return 'missing_data'
+
+        # Verificar errores en la cédula
+        if not self.is_valid_cedula(cedula):
+            return 'error_data'
+
+        return None  # No hay errores ni datos faltantes
+    
+    def update_row_colors(self):
+        """Actualiza los colores de las filas según los datos."""
+        for item in self.tree.get_children():
+            values = self.tree.item(item, 'values')
+            tag = self.validate_row(values)
+            self.tree.item(item, tags=(tag,))
 
 
 class SettingsWindow:
@@ -490,7 +528,7 @@ class EntryDetailWindow:
         detail_window.destroy()
 
         # Actualizar colores de las filas
-        self.update_row_colors()
+        self.app.update_row_colors()  # Actualizar colores después de agregar una nueva entrada
         
     def save_changes(self, edit_vars, item_id, detail_window):
         """Guarda los cambios en una entrada existente."""
