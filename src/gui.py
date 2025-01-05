@@ -89,42 +89,9 @@ class ImageGeneratorApp:
         self.image_generator = ImageGenerator()
 
     def open_settings_window(self):
-        """Abre una ventana para configurar las opciones de la aplicación."""
-        settings_window = tk.Toplevel(self.root)
-        settings_window.title("Configuraciones")
+        """Abre la ventana de configuración."""
+        SettingsWindow(self.root, self)
 
-        # Cargar configuraciones actuales
-        app_title_var = tk.StringVar(value=self.root.title())
-        bg_color_var = tk.StringVar(value=self.root.cget("bg"))
-
-        # Ejemplo de configuración: Cambiar el título de la aplicación
-        tk.Label(settings_window, text="Título de la Aplicación:").grid(row=0, column=0, padx=5, pady=5, sticky='e')
-        tk.Entry(settings_window, textvariable=app_title_var).grid(row=0, column=1, padx=5, pady=5)
-
-        # Ejemplo de configuración: Cambiar el color de fondo
-        tk.Label(settings_window, text="Color de Fondo:").grid(row=1, column=0, padx=5, pady=5, sticky='e')
-        tk.Entry(settings_window, textvariable=bg_color_var).grid(row=1, column=1, padx=5, pady=5)
-
-        # Botón para guardar configuraciones
-        def save_settings():
-            """Guarda las configuraciones y cierra la ventana."""
-            new_title = app_title_var.get()
-            new_bg_color = bg_color_var.get()
-            
-            # Aplicar configuraciones
-            self.root.title(new_title)
-            self.root.config(bg=new_bg_color)
-            
-            # Guardar configuraciones en el archivo
-            self.save_settings(new_title, new_bg_color)
-            
-            settings_window.destroy()  # Cerrar la ventana
-
-        tk.Button(settings_window, text="Guardar", command=save_settings).grid(row=2, column=0, columnspan=2, pady=10)
-
-        # Botón para cancelar
-        tk.Button(settings_window, text="Cancelar", command=settings_window.destroy).grid(row=3, column=0, columnspan=2, pady=5)
-        
     def open_entry_window(self, title, item_values=None):
         """Abre una ventana para ingresar o editar los detalles de un producto."""
         detail_window = tk.Toplevel(self.root)
@@ -169,7 +136,7 @@ class ImageGeneratorApp:
             self.load_image(item_values[5])
 
     def open_new_entry_window(self):
-        """Abre una nueva ventana para ingresar los detalles de un nuevo producto."""
+        """Abre una nueva ventana para ingresar los detalles de un nuevo trabajador."""
         self.open_entry_window("Nueva Entrada")
 
     def open_detail_window(self, event):
@@ -274,19 +241,11 @@ class ImageGeneratorApp:
                 self.root.config(bg=settings.get("bg_color", "white"))
         except FileNotFoundError:
             # Si el archivo no existe, se utilizarán los valores predeterminados
-            pass
+            self.root.title("Carnet Craft")
+            self.root.config(bg="white")
         except json.JSONDecodeError:
             messagebox.showerror("Error", "Error al cargar las configuraciones.")
 
-    def save_settings(self, app_title, bg_color):
-        """Guarda las configuraciones en un archivo JSON."""
-        settings = {
-            "app_title": app_title,
-            "bg_color": bg_color
-        }
-        with open('settings.json', 'w') as f:
-            json.dump(settings, f)
-            
     def show_confirmation_window(self):
         """Muestra una ventana de confirmación con los datos cargados."""
         confirmation_window = tk.Toplevel(self.root)
@@ -438,10 +397,61 @@ class ImageGeneratorApp:
             messagebox.showinfo(
                 "Éxito", f"Todas las imágenes seleccionadas han sido generadas. Total: {total_generados}"
             )
-    
+
     def is_valid_cedula(self, cedula):
         """Valida que la cédula contenga solo números y tenga 7 u 8 dígitos."""
         return cedula.isdigit() and len(cedula) in (7, 8)
+
+
+class SettingsWindow:
+    def __init__(self, root, app):
+        """Inicializa la ventana de configuración."""
+        self.root = root
+        self.app = app
+        self.settings_window = tk.Toplevel(self.root)
+        self.settings_window.title("Configuraciones")
+
+        # Cargar configuraciones actuales
+        self.app_title_var = tk.StringVar(value=self.app.root.title())
+        self.bg_color_var = tk.StringVar(value=self.app.root.cget("bg"))
+
+        # Crear la interfaz de usuario
+        self.create_ui()
+
+    def create_ui(self):
+        """Crea la interfaz de usuario para la ventana de configuración."""
+        # Ejemplo de configuración: Cambiar el título de la aplicación
+        tk.Label(self.settings_window, text="Título de la Aplicación:").grid(row=0, column=0, padx=5, pady=5, sticky='e')
+        tk.Entry(self.settings_window, textvariable=self.app_title_var).grid(row=0, column=1, padx=5, pady=5)
+
+        # Ejemplo de configuración: Cambiar el color de fondo
+        tk.Label(self.settings_window, text="Color de Fondo:").grid(row=1, column=0, padx=5, pady=5, sticky='e')
+        tk.Entry(self.settings_window, textvariable=self.bg_color_var).grid(row=1, column=1, padx=5, pady=5)
+
+        # Botón para guardar configuraciones
+        tk.Button(self.settings_window, text="Guardar", command=self.save_settings).grid(row=2, column=0, columnspan=2, pady=10)
+
+        # Botón para cancelar
+        tk.Button(self.settings_window, text="Cancelar", command=self.settings_window.destroy).grid(row=3, column=0, columnspan=2, pady=5)
+
+    def save_settings(self):
+        """Guarda las configuraciones en un archivo JSON."""
+        new_title = self.app_title_var.get()
+        new_bg_color = self.bg_color_var.get()
+
+        # Aplicar configuraciones
+        self.app.root.title(new_title)
+        self.app.root.config(bg=new_bg_color)
+
+        # Guardar configuraciones en el archivo
+        settings = {
+            "app_title": new_title,
+            "bg_color": new_bg_color
+        }
+        with open('settings.json', 'w') as f:
+            json.dump(settings, f)
+
+        self.settings_window.destroy()  # Cerrar la ventana
 
 
 if __name__ == "__main__":
