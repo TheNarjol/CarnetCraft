@@ -390,7 +390,10 @@ class EntryDetailWindow:
         self.item_values = item_values
         self.detail_window = tk.Toplevel(self.root)
         self.detail_window.title(title)
+        
+        # Variables para los campos de entrada
         self.edit_vars = [tk.StringVar(value=value) for value in (item_values or [""] * 6)]
+        self.item_id = None if item_values is None else self.app.tree.selection()[0]
         self.image_display = None
         self.create_ui()
 
@@ -410,9 +413,19 @@ class EntryDetailWindow:
 
         # Botón para guardar nueva entrada o cambios
         action = "Guardar Nueva Entrada" if self.item_values is None else "Guardar Cambios"
-        save_command = self.save_new_entry if self.item_values is None else self.save_changes
-        tk.Button(self.detail_window, text=action, command=save_command).grid(row=len(labels) + 2, column=0, columnspan=2, pady=5)
 
+        if self.item_values is None:
+            # Guardar nueva entrada
+            save_command = lambda: self.save_new_entry(self.edit_vars, self.detail_window)
+        else:
+            # Guardar cambios
+            save_command = lambda: self.save_changes(self.edit_vars, self.item_id, self.detail_window)
+
+        tk.Button(
+            self.detail_window,
+            text=action,
+            command=save_command
+        ).grid(row=len(labels) + 2, column=0, columnspan=2, pady=5)
         # Cargar imagen si se está editando
         if self.item_values:
             self.load_image(self.item_values[5])
@@ -456,7 +469,7 @@ class EntryDetailWindow:
             return
 
         # Validación de la cédula
-        if not self.is_valid_cedula(new_values[2]):
+        if not self.app.is_valid_cedula(new_values[2]):
             messagebox.showerror("Error", "La cédula debe contener solo números y tener 7 u 8 dígitos.")
             return
 
@@ -468,10 +481,10 @@ class EntryDetailWindow:
         # Actualizar o agregar la entrada en el Treeview
         if item_id is not None:
             # Actualizar entrada existente
-            self.tree.item(item_id, values=new_values)
+            self.app.tree.item(item_id, values=new_values)
         else:
             # Agregar nueva entrada
-            self.tree.insert("", "end", values=new_values)
+            self.app.tree.insert("", "end", values=new_values)
 
         # Cerrar la ventana de detalles
         detail_window.destroy()
