@@ -49,12 +49,22 @@ class ImageGeneratorApp:
             command=self.toggle_select_all,
         )
         self.select_all_button.pack(pady=5, anchor="w", padx=10)
+        
         # Tabla para mostrar los datos
         self.tree = ttk.Treeview(
-            root,
-            columns=("Nombre", "Apellidos", "Cedula", "Adscrito", "Cargo"),
-            show="headings",
+            self.root,
+            columns=("Nombre", "Apellidos", "Cedula", "Adscrito", "Cargo", "Ruta Imagen"),
+            show="headings"
         )
+        
+        # Definir los nombres de las columnas
+        self.tree.heading("Nombre", text="Nombre")
+        self.tree.heading("Apellidos", text="Apellidos")
+        self.tree.heading("Cedula", text="Cédula")
+        self.tree.heading("Adscrito", text="Adscrito")
+        self.tree.heading("Cargo", text="Cargo")
+        self.tree.heading("Ruta Imagen", text="Ruta Imagen")
+        
         # Configurar encabezados de la tabla
         for col in self.tree["columns"]:
             self.tree.heading(col, text=col)
@@ -400,7 +410,7 @@ class EntryDetailWindow:
 
         # Botón para guardar nueva entrada o cambios
         action = "Guardar Nueva Entrada" if self.item_values is None else "Guardar Cambios"
-        save_command = self.save_new_entry if self.item_values is None else lambda: self.save_changes(self.edit_vars, self.app.tree.selection()[0], self.detail_window)
+        save_command = self.save_new_entry if self.item_values is None else self.save_changes
         tk.Button(self.detail_window, text=action, command=save_command).grid(row=len(labels) + 2, column=0, columnspan=2, pady=5)
 
         # Cargar imagen si se está editando
@@ -435,59 +445,47 @@ class EntryDetailWindow:
         else:
             messagebox.showerror("Error", "La ruta de la imagen no es válida.")
 
-    def save_new_entry(self):
-        """Guarda una nueva entrada en el Treeview después de validar los campos obligatorios."""
-        nombre = self.edit_vars[0].get().strip()
-        apellidos = self.edit_vars[1].get().strip()
-        cedula = self.edit_vars[2].get().strip()
+    def save_entry(self, edit_vars, detail_window, item_id=None):
+        """Guarda una entrada en el Treeview después de validar los campos."""
+        # Obtener los valores de los campos
+        new_values = [var.get() for var in edit_vars]
 
-        # Validar campos obligatorios
-        if not nombre or not apellidos or not cedula:
-            messagebox.showerror("Error", "Los campos Nombre, Apellidos y Cédula son obligatorios.")
+        # Validación de campos vacíos
+        if any(value.strip() == "" for value in new_values[:5]):  # Validar solo los primeros 5 campos
+            messagebox.showerror("Error", "Todos los campos deben ser completados.")
             return
 
-        # Validar la cédula
-        if not self.app.is_valid_cedula(cedula):
+        # Validación de la cédula
+        if not self.is_valid_cedula(new_values[2]):
             messagebox.showerror("Error", "La cédula debe contener solo números y tener 7 u 8 dígitos.")
             return
 
-        # Obtener los valores de los campos
-        values = [var.get() for var in self.edit_vars]
-
-        # Insertar en el Treeview
-        self.app.tree.insert("", "end", values=values)
-
-        # Cerrar la ventana de detalle
-        self.detail_window.destroy()
-
-    def save_changes(self):
-        """Guarda los cambios en una entrada existente después de validar los campos obligatorios."""
-        nombre = self.edit_vars[0].get().strip()
-        apellidos = self.edit_vars[1].get().strip()
-        cedula = self.edit_vars[2].get().strip()
-
-        # Validar campos obligatorios
-        if not nombre or not apellidos or not cedula:
-            messagebox.showerror("Error", "Los campos Nombre, Apellidos y Cédula son obligatorios.")
+        # Validación de la existencia del archivo de imagen
+        if not os.path.isfile(new_values[5]):
+            messagebox.showerror("Error", "El archivo de imagen no existe.")
             return
 
-        # Validar la cédula
-        if not self.app.is_valid_cedula(cedula):
-            messagebox.showerror("Error", "La cédula debe contener solo números y tener 7 u 8 dígitos.")
-            return
+        # Actualizar o agregar la entrada en el Treeview
+        if item_id is not None:
+            # Actualizar entrada existente
+            self.tree.item(item_id, values=new_values)
+        else:
+            # Agregar nueva entrada
+            self.tree.insert("", "end", values=new_values)
 
-        # Obtener los valores de los campos
-        values = [var.get() for var in self.edit_vars]
+        # Cerrar la ventana de detalles
+        detail_window.destroy()
 
-        # Obtener el elemento seleccionado
-        selected_item = self.app.tree.selection()[0]
+        # Actualizar colores de las filas
+        self.update_row_colors()
+        
+    def save_changes(self, edit_vars, item_id, detail_window):
+        """Guarda los cambios en una entrada existente."""
+        self.save_entry(edit_vars, detail_window, item_id)
 
-        # Actualizar el Treeview
-        self.app.tree.item(selected_item, values=values)
-
-        # Cerrar la ventana de detalle
-        self.detail_window.destroy()
-
+    def save_new_entry(self, edit_vars, detail_window):
+        """Guarda una nueva entrada en el Treeview."""
+        self.save_entry(edit_vars, detail_window)
 
 if __name__ == "__main__":
     root = tk.Tk()
