@@ -46,8 +46,6 @@ class ImageGeneratorApp:
         # DataFrame para almacenar los datos
         self.df = None
 
-        # Agregar un combobox para seleccionar el tipo de carnet
-        self.create_carnet_type_combobox()
 
         # Instancia del generador de imágenes
         self.image_generator = ImageGenerator()
