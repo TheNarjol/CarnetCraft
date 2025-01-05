@@ -27,7 +27,6 @@ class ImageGeneratorApp:
         self.root.title("Carnet Craft")
         
         # Iniciar la ventana maximizada
-        # Intentar maximizar la ventana usando la solución más compatible
         self.maximize_window()  # Método para manejar la maximización
         
         # Crear una barra de menú
@@ -45,6 +44,7 @@ class ImageGeneratorApp:
         
         # DataFrame para almacenar los datos
         self.df = None
+        self.oficinas = [("Oficina 1", "OF1"), ("Oficina 2", "OF2")]
 
 
         # Instancia del generador de imágenes
@@ -85,6 +85,7 @@ class ImageGeneratorApp:
         # Agregar un menú de editar
         edit_menu = Menu(self.menu_bar, tearoff=0)
         edit_menu.add_command(label="Configuraciones", command=self.open_settings_window)
+        edit_menu.add_command(label="Oficinas", command=self.open_custom_entry_window)
         self.menu_bar.add_cascade(label="Editar", menu=edit_menu)
 
     def create_treeview_and_buttons(self):
@@ -503,6 +504,9 @@ class ImageGeneratorApp:
             # Abrir la ventana de edición con los valores actuales
             self.open_entry_window("Editar Entrada", item_values)
 
+    def open_custom_entry_window(self):
+        """Abre la ventana personalizada para agregar o editar oficinas."""
+        CustomEntryWindow(self.root, self, "Gestión de oficinas")
 
 class SettingsModel:
     def __init__(self):
@@ -796,6 +800,141 @@ class EntryDetailWindow:
         self.save_entry(edit_vars, detail_window)
 
 
+class CustomEntryWindow:
+    def __init__(self, root, app, title):
+        """Inicializa la ventana personalizada con un Treeview y botones de acción."""
+        self.root = root
+        self.app = app
+        self.title = title
+        self.custom_window = tk.Toplevel(self.root)
+        self.custom_window.title(title)
+        
+        # Configurar el tamaño de la ventana
+        self.custom_window.geometry("400x300")
+        
+        # Centrar la ventana en la pantalla
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (400 // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (300 // 2)
+        self.custom_window.geometry(f"+{x}+{y}")
+        
+        # Hacer que la ventana sea no redimensionable
+        self.custom_window.resizable(False, False)
+        
+        # Variables para almacenar los datos del Treeview
+        self.data = self.app.oficinas
+        
+        # Crear la interfaz de usuario
+        self.create_ui()
+
+    def create_ui(self):
+        """Crea la interfaz de usuario para la ventana personalizada."""
+        # Crear el Treeview
+        self.tree = ttk.Treeview(self.custom_window, columns=("Nombre", "Abreviatura"), show="headings")
+        self.tree.heading("Nombre", text="Nombre")
+        self.tree.heading("Abreviatura", text="Abreviatura")
+        self.tree.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+        
+        # Agregar la información de self.app.oficinas al Treeview
+        for oficina in self.app.oficinas:
+            self.tree.insert("", "end", values=oficina)
+        
+        # Crear los botones de acción
+        self.add_button = tk.Button(self.custom_window, text="Agregar", command=self.open_add_edit_window)
+        self.add_button.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
+        
+        self.edit_button = tk.Button(self.custom_window, text="Editar", command=self.open_add_edit_window)
+        self.edit_button.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+        
+        self.delete_button = tk.Button(self.custom_window, text="Eliminar", command=self.delete_entry)
+        self.delete_button.grid(row=1, column=2, padx=5, pady=5, sticky="ew")
+        
+        self.accept_button = tk.Button(self.custom_window, text="Aceptar", command=self.accept_changes)
+        self.accept_button.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+        
+        self.cancel_button = tk.Button(self.custom_window, text="Cancelar", command=self.cancel_changes)
+        self.cancel_button.grid(row=2, column=2, padx=5, pady=5, sticky="ew")
+        
+        # Configurar el peso de las filas y columnas para que se expandan correctamente
+        self.custom_window.grid_rowconfigure(0, weight=1)
+        self.custom_window.grid_columnconfigure(0, weight=1)
+        self.custom_window.grid_columnconfigure(1, weight=1)
+        self.custom_window.grid_columnconfigure(2, weight=1)
+        
+        # Mantener la ventana siempre encima
+        self.custom_window.attributes("-topmost", True)
+
+    def open_add_edit_window(self):
+        """Abre una ventana para agregar o editar una entrada."""
+        self.add_edit_window = tk.Toplevel(self.custom_window)
+        self.add_edit_window.title("Agregar/Editar Entrada")
+        
+        # Centrar la ventana en la pantalla
+        x = self.custom_window.winfo_x() + (self.custom_window.winfo_width() // 2) - (200 // 2)
+        y = self.custom_window.winfo_y() + (self.custom_window.winfo_height() // 2) - (100 // 2)
+        self.add_edit_window.geometry(f"+{x}+{y}")
+        
+        # Hacer que la ventana sea no redimensionable
+        self.add_edit_window.resizable(False, False)
+        
+        # Variables para los campos de entrada
+        self.nombre_var = tk.StringVar()
+        self.abreviatura_var = tk.StringVar()
+        
+        # Crear la interfaz de usuario para la ventana de agregar/editar
+        tk.Label(self.add_edit_window, text="Nombre:").grid(row=0, column=0, padx=5, pady=5, sticky="e")
+        tk.Entry(self.add_edit_window, textvariable=self.nombre_var).grid(row=0, column=1, padx=5, pady=5)
+
+        tk.Label(self.add_edit_window, text="Abreviatura:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
+        tk.Entry(self.add_edit_window, textvariable=self.abreviatura_var).grid(row=1, column=1, padx=5, pady=5)
+
+        # Botones de Aceptar y Cancelar
+        tk.Button(self.add_edit_window, text="Aceptar", command=self.save_entry).grid(row=2, column=0, padx=5, pady=5, sticky="ew")
+        tk.Button(self.add_edit_window, text="Cancelar", command=self.add_edit_window.destroy).grid(row=2, column=1, padx=5, pady=5, sticky="ew")
+        # Mantener la ventana siempre encima
+        self.add_edit_window.attributes("-topmost", True)
+        # Bloquear la interacción con el CustomEntryWindow
+        self.add_edit_window.grab_set()
+        
+    def save_entry(self):
+        """Guarda la entrada en el Treeview y en el atributo data."""
+        nombre = self.nombre_var.get()
+        abreviatura = self.abreviatura_var.get()
+        
+        if nombre and abreviatura:
+            # Comprobación para no tener una entrada repetida
+            if (nombre, abreviatura) in self.data:
+                messagebox.showerror("Error", "Entrada repetida. No se puede agregar una entrada con el mismo nombre y abreviatura.", parent=self.add_edit_window)
+            elif nombre in [oficina[0] for oficina in self.data]:
+                messagebox.showerror("Error", "Nombre existente. No se puede agregar una entrada con el mismo nombre.", parent=self.add_edit_window)
+            elif abreviatura in [oficina[1] for oficina in self.data]:
+                messagebox.showerror("Error", "Abreviatura existente. No se puede agregar una entrada con la misma abreviatura.", parent=self.add_edit_window)
+            else:
+                self.data.append((nombre, abreviatura))
+                self.tree.insert("", "end", values=(nombre, abreviatura))
+                self.add_edit_window.destroy()
+
+    def delete_entry(self):
+        """Elimina la entrada seleccionada del Treeview y del atributo data."""
+        selected_item = self.tree.selection()
+        if selected_item:
+            self.tree.delete(selected_item)
+            self.data = [self.tree.item(item, 'values') for item in self.tree.get_children()]
+
+    def accept_changes(self):
+        """Acepta los cambios realizados en la ventana."""
+        # Aquí puedes agregar la lógica para manejar los cambios aceptados
+        self.app.oficinas = self.data  # Guardar los datos en el atributo oficinas
+        self.custom_window.destroy()
+    
+    def cancel_changes(self):
+        """Pregunta si se está seguro de cancelar los cambios."""
+        respuesta = messagebox.askyesno("Cancelar cambios", "¿Estás seguro de cancelar los cambios?", parent=self.custom_window)
+        if respuesta:
+            self.custom_window.destroy()
+        else:
+            pass  # No hacer nada si la respuesta es no
+
+        
 if __name__ == "__main__":
     root = tk.Tk()
     app = ImageGeneratorApp(root)
