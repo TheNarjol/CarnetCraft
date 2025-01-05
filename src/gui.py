@@ -134,10 +134,15 @@ class ImageGeneratorApp:
         self.new_entry_button.pack(pady=5, anchor="w", padx=10)
 
     def create_sidebar(self):
-        """Crea el sidebar para mostrar detalles de la fila seleccionada."""
+        # Crear el sidebar con un tamaño máximo
         self.sidebar = tk.Frame(self.main_frame, width=200, bg="lightgray")
         self.sidebar.pack(side="right", fill="y", padx=10, pady=10)
-        
+
+        # Desactivar la propagación de tamaño para evitar que el sidebar se expanda demasiado
+        self.sidebar.pack_propagate(False)
+
+        # Establecer un tamaño máximo para el sidebar
+        self.sidebar.config(width=200, height=400)  # Ancho máximo de 200, altura máxima de 400
         # Etiquetas para mostrar los detalles de la fila seleccionada
         self.sidebar_labels = {
             "Nombre": tk.Label(self.sidebar, text="Nombre:", bg="lightgray"),
@@ -173,7 +178,7 @@ class ImageGeneratorApp:
         self.tipo_carnet_combobox.current(0)
         self.tipo_carnet_combobox.pack(pady=5, anchor="w", padx=10)
 
-    def update_sidebar(self, event):
+    def update_sidebar(self, event=None):
         """Actualiza el sidebar con los detalles de la fila seleccionada."""
         selected_item = self.tree.selection()
         if selected_item:
@@ -651,7 +656,7 @@ class EntryDetailWindow:
 
         # Actualizar colores de las filas
         self.app.update_row_colors()  # Actualizar colores después de agregar una nueva entrada
-        
+        self.app.update_sidebar()
     def save_changes(self, edit_vars, item_id, detail_window):
         """Guarda los cambios en una entrada existente."""
         self.save_entry(edit_vars, detail_window, item_id)
