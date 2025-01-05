@@ -24,7 +24,6 @@ class ImageGeneratorApp:
     def __init__(self, root):
         """Inicializa la aplicación de generación de carnets de imagen."""
         self.root = root
-        self.load_settings()  # Cargar configuraciones al iniciar
         self.root.title("Carnet Craft")
         
         # Iniciar la ventana maximizada
@@ -103,7 +102,7 @@ class ImageGeneratorApp:
         # Tabla para mostrar los datos
         self.tree = ttk.Treeview(
             self.main_frame,
-            columns=("Nombre", "Apellidos", "Cedula", "Adscrito", "Cargo"),
+            columns=("Nombre", "Apellidos", "Cedula", "Adscrito"),
             show="headings"
         )
         
@@ -112,7 +111,7 @@ class ImageGeneratorApp:
         self.tree.heading("Apellidos", text="Apellidos")
         self.tree.heading("Cedula", text="Cédula")
         self.tree.heading("Adscrito", text="Adscrito")
-        self.tree.heading("Cargo", text="Cargo")
+
         
         # Configurar encabezados de la tabla
         for col in self.tree["columns"]:
@@ -174,21 +173,6 @@ class ImageGeneratorApp:
 
         # Asociar el evento de selección con el método update_sidebar
         self.tree.bind("<<TreeviewSelect>>", self.update_sidebar)
-
-    def create_carnet_type_combobox(self):
-        """Crea el combobox para seleccionar el tipo de carnet."""
-        self.tipo_carnet_var = tk.StringVar()
-        self.tipo_carnet_combobox = ttk.Combobox(
-            self.root, textvariable=self.tipo_carnet_var
-        )
-        self.tipo_carnet_combobox["values"] = (
-            "Profesional",
-            "Gerencial",
-            "Administrativo",
-        )
-        # Establecer el valor predeterminado
-        self.tipo_carnet_combobox.current(0)
-        self.tipo_carnet_combobox.pack(pady=5, anchor="w", padx=10)
 
     def update_sidebar(self, event=None):
         """Actualiza el sidebar según la selección en el Treeview."""
@@ -264,7 +248,7 @@ class ImageGeneratorApp:
         
     def open_settings_window(self):
         """Abre la ventana de configuración."""
-        SettingsWindow(self.root, self)
+        SettingsController(self.root)
 
     def open_entry_window(self, title, item_values=None):
         """Abre una ventana para ingresar o editar los detalles de un trabajador."""
@@ -332,20 +316,6 @@ class ImageGeneratorApp:
             except Exception as e:
                 messagebox.showerror("Error", str(e))
         self.update_row_colors()  # Actualizar colores después de cargar los datos
-
-    def load_settings(self):
-        """Carga las configuraciones desde un archivo JSON."""
-        try:
-            with open('settings.json', 'r') as f:
-                settings = json.load(f)
-                self.root.title(settings.get("app_title", "Carnet Craft"))
-                self.root.config(bg=settings.get("bg_color", "white"))
-        except FileNotFoundError:
-            # Si el archivo no existe, se utilizarán los valores predeterminados
-            self.root.title("Carnet Craft")
-            self.root.config(bg="white")
-        except json.JSONDecodeError:
-            messagebox.showerror("Error", "Error al cargar las configuraciones.")
 
     def show_confirmation_window(self):
         """Muestra una ventana de confirmación con los datos cargados."""
@@ -536,55 +506,128 @@ class ImageGeneratorApp:
             self.open_entry_window("Editar Entrada", item_values)
 
 
-class SettingsWindow:
-    def __init__(self, root, app):
-        """Inicializa la ventana de configuración."""
-        self.root = root
-        self.app = app
-        self.settings_window = tk.Toplevel(self.root)
-        self.settings_window.title("Configuraciones")
+class SettingsModel:
+    def __init__(self):
+        self.settings = {
+            "mysql_user": "",
+            "mysql_pass": "",
+            "mysql_host": "",
+            "mysql_port": "3306",
+        }
 
-        # Cargar configuraciones actuales
-        self.app_title_var = tk.StringVar(value=self.app.root.title())
-        self.bg_color_var = tk.StringVar(value=self.app.root.cget("bg"))
+    def load_settings(self):
+        """Carga las configuraciones desde el archivo settings.json."""
+        try:
+            with open('settings.json', 'r') as f:
+                self.settings = json.load(f)
+        except FileNotFoundError:
+            # Si el archivo no existe, se utilizarán los valores predeterminados
+            pass
+        except json.JSONDecodeError:
+            messagebox.showerror("Error", "Error al cargar las configuraciones.")
+
+    def save_settings(self, settings):
+        """Guarda las configuraciones en el archivo settings.json."""
+        try:
+            with open('settings.json', 'w') as f:
+                json.dump(settings, f)
+            return True
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo guardar las configuraciones: {str(e)}")
+            return False
+
+
+class SettingsView:
+    def __init__(self, root, controller):
+        """Inicializa la vista de configuración."""
+        self.settings_window = tk.Toplevel(root)
+        self.settings_window.title("Configuraciones")
+        self.controller = controller
+
+        # Variables para los campos de entrada
+        self.app_title_var = tk.StringVar()
+        self.bg_color_var = tk.StringVar()
+        self.mysql_user_var = tk.StringVar()
+        self.mysql_pass_var = tk.StringVar()
+        self.mysql_host_var = tk.StringVar()
+        self.mysql_port_var = tk.StringVar(value="3306")
 
         # Crear la interfaz de usuario
         self.create_ui()
 
     def create_ui(self):
         """Crea la interfaz de usuario para la ventana de configuración."""
-        # Ejemplo de configuración: Cambiar el título de la aplicación
-        tk.Label(self.settings_window, text="Título de la Aplicación:").grid(row=0, column=0, padx=5, pady=5, sticky='e')
-        tk.Entry(self.settings_window, textvariable=self.app_title_var).grid(row=0, column=1, padx=5, pady=5)
+        # Lista de campos y sus etiquetas
+        fields = [
+            ("Usuario MySQL:", self.mysql_user_var),
+            ("Contraseña MySQL:", self.mysql_pass_var, {"show": "*"}),
+            ("Dirección MySQL:", self.mysql_host_var),
+            ("Puerto MySQL:", self.mysql_port_var),
+        ]
 
-        # Ejemplo de configuración: Cambiar el color de fondo
-        tk.Label(self.settings_window, text="Color de Fondo:").grid(row=1, column=0, padx=5, pady=5, sticky='e')
-        tk.Entry(self.settings_window, textvariable=self.bg_color_var).grid(row=1, column=1, padx=5, pady=5)
+        # Crear y organizar los campos usando grid
+        for row, (label_text, var, *kwargs) in enumerate(fields):
+            tk.Label(self.settings_window, text=label_text).grid(row=row, column=0, padx=5, pady=5, sticky='e')
+            entry = tk.Entry(self.settings_window, textvariable=var, **kwargs[0] if kwargs else {})
+            entry.grid(row=row, column=1, padx=5, pady=5, sticky='w')
 
-        # Botón para guardar configuraciones
-        tk.Button(self.settings_window, text="Guardar", command=self.save_settings).grid(row=2, column=0, columnspan=2, pady=10)
+        # Botones de acción
+        tk.Button(self.settings_window, text="Guardar", command=self.on_save).grid(
+            row=len(fields), column=0, columnspan=2, pady=10, padx=5, sticky='ew'
+        )
+        tk.Button(self.settings_window, text="Cancelar", command=self.settings_window.destroy).grid(
+            row=len(fields) + 1, column=0, columnspan=2, pady=5, padx=5, sticky='ew'
+        )
 
-        # Botón para cancelar
-        tk.Button(self.settings_window, text="Cancelar", command=self.settings_window.destroy).grid(row=3, column=0, columnspan=2, pady=5)
+    def on_save(self):
+        """Método que se ejecuta al hacer clic en el botón Guardar."""
+        self.controller.save_settings()
+        
+    def get_settings(self):
+        """Obtiene los valores actuales de los campos de entrada."""
+        return {
+            "mysql_user": self.mysql_user_var.get(),
+            "mysql_pass": self.mysql_pass_var.get(),
+            "mysql_host": self.mysql_host_var.get(),
+            "mysql_port": self.mysql_port_var.get(),
+        }
+        
+        
+class SettingsController:
+    def __init__(self, root):
+        """Inicializa el controlador de configuración."""
+        self.model = SettingsModel()
+        self.view = SettingsView(root, self)
+
+
+        # Cargar configuraciones en la vista
+        self.model.load_settings()
+        self.load_view_settings()
+
+        # Vincular el evento de guardar
+        self.view.on_save = self.save_settings
+
+    def load_view_settings(self):
+        """Carga las configuraciones en la vista."""
+        settings = self.model.settings
+        if settings:
+            self.view.mysql_user_var.set(settings.get("mysql_user", ""))
+            self.view.mysql_pass_var.set(settings.get("mysql_pass", ""))
+            self.view.mysql_host_var.set(settings.get("mysql_host", ""))
+            self.view.mysql_port_var.set(settings.get("mysql_port", "3306"))
+        else:
+            # Establece valores predeterminados si no hay configuraciones
+            self.view.mysql_user_var.set("")
+            self.view.mysql_pass_var.set("")
+            self.view.mysql_host_var.set("")
+            self.view.mysql_port_var.set("3306")
 
     def save_settings(self):
-        """Guarda las configuraciones en un archivo JSON."""
-        new_title = self.app_title_var.get()
-        new_bg_color = self.bg_color_var.get()
-
-        # Aplicar configuraciones
-        self.app.root.title(new_title)
-        self.app.root.config(bg=new_bg_color)
-
-        # Guardar configuraciones en el archivo
-        settings = {
-            "app_title": new_title,
-            "bg_color": new_bg_color
-        }
-        with open('settings.json', 'w') as f:
-            json.dump(settings, f)
-
-        self.settings_window.destroy()  # Cerrar la ventana
+        """Guarda las configuraciones desde la vista al modelo."""
+        settings = self.view.get_settings()
+        if self.model.save_settings(settings):
+            messagebox.showinfo("Éxito", "Configuraciones guardadas correctamente.")
+            self.view.settings_window.destroy()
 
 
 class EntryDetailWindow:
