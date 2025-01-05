@@ -93,91 +93,20 @@ class ImageGeneratorApp:
         SettingsWindow(self.root, self)
 
     def open_entry_window(self, title, item_values=None):
-        """Abre una ventana para ingresar o editar los detalles de un producto."""
-        detail_window = tk.Toplevel(self.root)
-        detail_window.title(title)
-        # Crear variables para almacenar los valores editables
-        edit_vars = [tk.StringVar(value=value)
-                     for value in (item_values or [""] * 6)]
-        # Crear etiquetas y campos de entrada
-        labels = ["Nombre", "Apellidos", "Cedula", "Adscrito", "Cargo", "Ruta Imagen"]
-        for i, label in enumerate(labels):
-            tk.Label(detail_window, text=label).grid(
-                row=i, column=0, padx=5, pady=5, sticky='e')
-            tk.Entry(detail_window, textvariable=edit_vars[i]).grid(
-                row=i, column=1, padx=5, pady=5)
-        # Label para mostrar la imagen
-        self.image_display = tk.Label(detail_window, bd=2, relief="sunken")
-        self.image_display.grid(
-            row=len(labels), column=1, columnspan=2, pady=10)
-        # Función para seleccionar la imagen
-
-        def select_image():
-            file_path = filedialog.askopenfilename(
-                filetypes=[("Image Files", "*.png *.jpg *.jpeg")])
-            if file_path:
-                edit_vars[5].set(file_path)
-                img = Image.open(file_path)
-                img.thumbnail((100, 100))
-                img_tk = ImageTk.PhotoImage(img)
-                self.image_display.config(image=img_tk)
-                self.image_display.image = img_tk
-        # Botón para seleccionar la imagen
-        tk.Button(detail_window, text="Seleccionar Imagen",
-                    command=select_image).grid(row=len(labels), column=0, pady=5)
-        # Botón para guardar nueva entrada o cambios
-        action = "Guardar Nueva Entrada" if item_values is None else "Guardar Cambios"
-        def save_command(): return self.save_new_entry(edit_vars,
-                                                        detail_window) if item_values is None else self.save_changes(edit_vars, self.tree.selection()[0], detail_window)
-        tk.Button(detail_window, text=action, command=save_command).grid(
-            row=len(labels) + 2, column=0, columnspan=2, pady=5)
-        # Cargar imagen si se está editando
-        if item_values:
-            self.load_image(item_values[5])
+        """Abre una ventana para ingresar o editar los detalles de un trabajador."""
+        EntryDetailWindow(self.root, self, title, item_values)
 
     def open_new_entry_window(self):
         """Abre una nueva ventana para ingresar los detalles de un nuevo trabajador."""
         self.open_entry_window("Nueva Entrada")
 
     def open_detail_window(self, event):
-        """Abre una ventana para editar los detalles de la entrada seleccionada."""
+        """Abre una ventana para ver y editar los detalles de un trabajador seleccionado."""
         selected_item = self.tree.selection()
         if selected_item:
-            item_values = self.tree.item(selected_item[0])["values"]
-            if len(item_values) == 6:
-                self.open_entry_window("Editar Trabajador", item_values)
-            else:
-                messagebox.showerror(
-                    "Error", "Los datos seleccionados no son válidos.")
-
-    def save_entry(self, edit_vars, detail_window, item_id=None):
-        new_values = [var.get() for var in edit_vars]
-        # Validación de campos vacíos
-        if any(value.strip() == "" for value in new_values):
-            messagebox.showerror(
-                "Error", "Todos los campos deben ser completados.")
-            return
-        # Validación de la cédula
-        if not self.is_valid_cedula(new_values[2]):
-            messagebox.showerror(
-                "Error", "La cédula debe contener solo números y tener 7 u 8 dígitos.")
-            return
-        # Validación de la existencia del archivo de imagen
-        if not os.path.isfile(new_values[5]):
-            messagebox.showerror("Error", "El archivo de imagen no existe.")
-            return
-        # Actualizar o agregar la entrada en el Treeview
-        if item_id is not None:
-            # Actualizar entrada existente
-            self.tree.item(item_id, values=new_values)
-        else:
-            # Agregar nueva entrada
-            self.tree.insert("", "end", values=new_values)
-        detail_window.destroy()  # Cerrar la ventana
-
-    def save_changes(self, edit_vars, item_id, detail_window):
-        self.save_entry(edit_vars, detail_window, item_id)
-
+            item_values = self.tree.item(selected_item, 'values')
+            self.open_entry_window("Editar Entrada", item_values)
+    
     def save_new_entry(self, edit_vars, detail_window):
         self.save_entry(edit_vars, detail_window)
 
@@ -288,15 +217,6 @@ class ImageGeneratorApp:
             ]
             self.tree.insert("", "end", values=values)
         confirmation_window.destroy()  # Cerrar la ventana de confirmación
-
-    def load_image(self, img_path):
-        """Carga y muestra la imagen en el label."""
-        if os.path.isfile(img_path):
-            img = Image.open(img_path)
-            img.thumbnail((100, 100))
-            img_tk = ImageTk.PhotoImage(img)
-            self.image_display.config(image=img_tk)
-            self.image_display.image = img_tk
 
     def generate_images(self):
         """Genera imágenes para todos los carnets seleccionados en el Treeview."""
@@ -452,6 +372,71 @@ class SettingsWindow:
             json.dump(settings, f)
 
         self.settings_window.destroy()  # Cerrar la ventana
+
+
+class EntryDetailWindow:
+    def __init__(self, root, app, title, item_values=None):
+        """Inicializa la ventana de entrada/detalle."""
+        self.root = root
+        self.app = app
+        self.title = title
+        self.item_values = item_values
+        self.detail_window = tk.Toplevel(self.root)
+        self.detail_window.title(title)
+        self.edit_vars = [tk.StringVar(value=value) for value in (item_values or [""] * 6)]
+        self.image_display = None
+        self.create_ui()
+
+    def create_ui(self):
+        """Crea la interfaz de usuario para la ventana de entrada/detalle."""
+        labels = ["Nombre", "Apellidos", "Cedula", "Adscrito", "Cargo", "Ruta Imagen"]
+        for i, label in enumerate(labels):
+            tk.Label(self.detail_window, text=label).grid(row=i, column=0, padx=5, pady=5, sticky='e')
+            tk.Entry(self.detail_window, textvariable=self.edit_vars[i]).grid(row=i, column=1, padx=5, pady=5)
+
+        # Label para mostrar la imagen
+        self.image_display = tk.Label(self.detail_window, bd=2, relief="sunken")
+        self.image_display.grid(row=len(labels), column=1, columnspan=2, pady=10)
+
+        # Botón para seleccionar la imagen
+        tk.Button(self.detail_window, text="Seleccionar Imagen", command=self.select_image).grid(row=len(labels), column=0, pady=5)
+
+        # Botón para guardar nueva entrada o cambios
+        action = "Guardar Nueva Entrada" if self.item_values is None else "Guardar Cambios"
+        save_command = self.save_new_entry if self.item_values is None else lambda: self.save_changes(self.edit_vars, self.app.tree.selection()[0], self.detail_window)
+        tk.Button(self.detail_window, text=action, command=save_command).grid(row=len(labels) + 2, column=0, columnspan=2, pady=5)
+
+        # Cargar imagen si se está editando
+        if self.item_values:
+            self.load_image(self.item_values[5])
+
+    def select_image(self):
+        """Selecciona una imagen para el carnet."""
+        file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png *.jpg *.jpeg")])
+        if file_path:
+            self.edit_vars[5].set(file_path)
+            img = Image.open(file_path)
+            img.thumbnail((100, 100))
+            img_tk = ImageTk.PhotoImage(img)
+            self.image_display.config(image=img_tk)
+            self.image_display.image = img_tk
+
+    def load_image(self, img_path):
+        """Carga y muestra la imagen en el label."""
+        if os.path.isfile(img_path):
+            img = Image.open(img_path)
+            img.thumbnail((100, 100))
+            img_tk = ImageTk.PhotoImage(img)
+            self.image_display.config(image=img_tk)
+            self.image_display.image = img_tk
+
+    def save_new_entry(self):
+        """Guarda una nueva entrada en el Treeview."""
+        self.app.save_new_entry(self.edit_vars, self.detail_window)
+
+    def save_changes(self, edit_vars, item_id, detail_window):
+        """Guarda los cambios en una entrada existente en el Treeview."""
+        self.app.save_changes(edit_vars, item_id, detail_window)
 
 
 if __name__ == "__main__":
