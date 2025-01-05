@@ -27,8 +27,56 @@ class ImageGeneratorApp:
         self.load_settings()  # Cargar configuraciones al iniciar
         self.root.title("Carnet Craft")
         
+        # Iniciar la ventana maximizada
+        # Intentar maximizar la ventana usando la solución más compatible
+        self.maximize_window()  # Método para manejar la maximización
+        
         # Crear una barra de menú
-        self.menu_bar = Menu(root)
+        self.create_menu_bar()
+        
+        # Crear el Frame principal para el Treeview y el Sidebar
+        self.main_frame = tk.Frame(root)
+        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Crear el Treeview y los botones de selección
+        self.create_treeview_and_buttons()
+        
+        # Crear el Sidebar
+        self.create_sidebar()
+        
+        # DataFrame para almacenar los datos
+        self.df = None
+
+        # Agregar un combobox para seleccionar el tipo de carnet
+        self.create_carnet_type_combobox()
+
+        # Instancia del generador de imágenes
+        self.image_generator = ImageGenerator()
+
+        # Configurar tags para colores
+        self.tree.tag_configure('missing_data', background='yellow')
+        self.tree.tag_configure('error_data', background='red')
+        
+        # Cargar una imagen en blanco de 100x100 por defecto
+        self.load_default_image()
+
+    def maximize_window(self):
+        """
+        Intenta maximizar la ventana usando la solución más compatible.
+        Si falla, recurre a ajustar manualmente el tamaño de la ventana.
+        """
+        try:
+            # Intentar usar wm_attributes (solución más compatible)
+            self.root.attributes('-zoomed', True)
+        except Exception:
+            # Si falla, ajustar manualmente el tamaño de la ventana
+            screen_width = self.root.winfo_screenwidth()
+            screen_height = self.root.winfo_screenheight()
+            self.root.geometry(f"{screen_width}x{screen_height}+0+0")
+
+    def create_menu_bar(self):
+        """Crea la barra de menú de la aplicación."""
+        self.menu_bar = Menu(self.root)
         self.root.config(menu=self.menu_bar)
         
         # Agregar un menú de archivo
@@ -41,10 +89,12 @@ class ImageGeneratorApp:
         edit_menu = Menu(self.menu_bar, tearoff=0)
         edit_menu.add_command(label="Configuraciones", command=self.open_settings_window)
         self.menu_bar.add_cascade(label="Editar", menu=edit_menu)
-        
+
+    def create_treeview_and_buttons(self):
+        """Crea el Treeview y los botones de selección."""
         # Botón para seleccionar o deseleccionar todos
         self.select_all_button = tk.Button(
-            root,
+            self.root,
             text="Seleccionar Todos",
             command=self.toggle_select_all,
         )
@@ -52,8 +102,8 @@ class ImageGeneratorApp:
         
         # Tabla para mostrar los datos
         self.tree = ttk.Treeview(
-            self.root,
-            columns=("Nombre", "Apellidos", "Cedula", "Adscrito", "Cargo", "Ruta Imagen"),
+            self.main_frame,
+            columns=("Nombre", "Apellidos", "Cedula", "Adscrito", "Cargo"),
             show="headings"
         )
         
@@ -63,29 +113,56 @@ class ImageGeneratorApp:
         self.tree.heading("Cedula", text="Cédula")
         self.tree.heading("Adscrito", text="Adscrito")
         self.tree.heading("Cargo", text="Cargo")
-        self.tree.heading("Ruta Imagen", text="Ruta Imagen")
         
         # Configurar encabezados de la tabla
         for col in self.tree["columns"]:
             self.tree.heading(col, text=col)
-        self.tree.pack(pady=10, padx=10, fill="both", expand=True)
+        self.tree.pack(side="left", fill="both", expand=True)
+        
         # Asociar el evento de doble clic con el método open_detail_window
         self.tree.bind("<Double-1>", self.open_detail_window)
+        
         # Botón para generar imágenes
         self.generate_button = tk.Button(
-            root, text="Generar Imágenes", command=self.generate_images)
+            self.root, text="Generar Imágenes", command=self.generate_images)
         self.generate_button.pack(pady=5, anchor="se", padx=10)
+
         # Botón para crear una nueva entrada
         self.new_entry_button = tk.Button(
-            root, text="+", command=self.open_new_entry_window
+            self.root, text="+", command=self.open_new_entry_window
         )
         self.new_entry_button.pack(pady=5, anchor="w", padx=10)
-        # DataFrame para almacenar los datos
-        self.df = None
-        # Agregar un combobox para seleccionar el tipo de carnet
+
+    def create_sidebar(self):
+        """Crea el sidebar para mostrar detalles de la fila seleccionada."""
+        self.sidebar = tk.Frame(self.main_frame, width=200, bg="lightgray")
+        self.sidebar.pack(side="right", fill="y", padx=10, pady=10)
+        
+        # Etiquetas para mostrar los detalles de la fila seleccionada
+        self.sidebar_labels = {
+            "Nombre": tk.Label(self.sidebar, text="Nombre:", bg="lightgray"),
+            "Apellidos": tk.Label(self.sidebar, text="Apellidos:", bg="lightgray"),
+            "Cedula": tk.Label(self.sidebar, text="Cédula:", bg="lightgray"),
+            "Adscrito": tk.Label(self.sidebar, text="Adscrito:", bg="lightgray"),
+            "Cargo": tk.Label(self.sidebar, text="Cargo:", bg="lightgray"),
+        }
+
+        # Colocar las etiquetas en el sidebar
+        for label in self.sidebar_labels.values():
+            label.pack(pady=5)
+
+        # Label para mostrar la miniatura de la imagen
+        self.image_display = tk.Label(self.sidebar, bd=2, relief="sunken", bg="white")
+        self.image_display.pack(pady=10)
+
+        # Asociar el evento de selección con el método update_sidebar
+        self.tree.bind("<<TreeviewSelect>>", self.update_sidebar)
+
+    def create_carnet_type_combobox(self):
+        """Crea el combobox para seleccionar el tipo de carnet."""
         self.tipo_carnet_var = tk.StringVar()
         self.tipo_carnet_combobox = ttk.Combobox(
-            root, textvariable=self.tipo_carnet_var
+            self.root, textvariable=self.tipo_carnet_var
         )
         self.tipo_carnet_combobox["values"] = (
             "Profesional",
@@ -95,13 +172,58 @@ class ImageGeneratorApp:
         # Establecer el valor predeterminado
         self.tipo_carnet_combobox.current(0)
         self.tipo_carnet_combobox.pack(pady=5, anchor="w", padx=10)
-        # Instancia del generador de imágenes
-        self.image_generator = ImageGenerator()
-        
-        # Configurar tags para colores
-        self.tree.tag_configure('missing_data', background='yellow')
-        self.tree.tag_configure('error_data', background='red')
 
+    def update_sidebar(self, event):
+        """Actualiza el sidebar con los detalles de la fila seleccionada."""
+        selected_item = self.tree.selection()
+        if selected_item:
+            item_values = self.tree.item(selected_item, 'values')
+            
+            # Actualizar las etiquetas con los valores de la fila seleccionada
+            self.sidebar_labels["Nombre"].config(text=f"Nombre: {item_values[0]}")
+            self.sidebar_labels["Apellidos"].config(text=f"Apellidos: {item_values[1]}")
+            self.sidebar_labels["Cedula"].config(text=f"Cédula: {item_values[2]}")
+            self.sidebar_labels["Adscrito"].config(text=f"Adscrito: {item_values[3]}")
+            self.sidebar_labels["Cargo"].config(text=f"Cargo: {item_values[4]}")
+
+            # Verificar si hay una ruta de imagen
+            ruta_imagen = item_values[5] if len(item_values) > 5 else None
+
+            if ruta_imagen and os.path.isfile(ruta_imagen):  # Verificar si la ruta existe y es válida
+                self.load_image_thumbnail(ruta_imagen)
+            else:
+                # Limpiar la imagen si no hay ruta o el archivo no existe
+                self.clear_image_display()
+
+    def load_image_thumbnail(self, img_path):
+        """Carga y muestra la miniatura de la imagen en el sidebar."""
+        try:
+            img = Image.open(img_path)
+            img.thumbnail((100, 100))  # Redimensionar la imagen
+            img_tk = ImageTk.PhotoImage(img)
+            self.image_display.config(image=img_tk)
+            self.image_display.image = img_tk  # Mantener una referencia para evitar que se elimine
+        except Exception as e:
+            # Mostrar un mensaje de error si no se puede cargar la imagen
+            messagebox.showerror("Error", f"No se pudo cargar la imagen: {str(e)}")
+            self.clear_image_display()
+
+    def clear_image_display(self):
+        """Limpia la imagen mostrada en el sidebar y carga una imagen en blanco por defecto."""
+        # Limpiar la imagen actual
+        self.image_display.config(image=None)
+        self.image_display.image = None  # Eliminar la referencia a la imagen anterior
+
+        # Cargar la imagen en blanco por defecto
+        self.load_default_image()
+
+    def load_default_image(self):
+        """Carga una imagen en blanco de 100x100 por defecto."""
+        img = Image.new('RGB', (100, 100), color=(255, 255, 255))  # Crear una imagen en blanco
+        img_tk = ImageTk.PhotoImage(img)
+        self.image_display.config(image=img_tk)
+        self.image_display.image = img_tk  # Mantener una referencia para evitar que se elimine
+        
     def open_settings_window(self):
         """Abre la ventana de configuración."""
         SettingsWindow(self.root, self)
@@ -537,6 +659,8 @@ class EntryDetailWindow:
     def save_new_entry(self, edit_vars, detail_window):
         """Guarda una nueva entrada en el Treeview."""
         self.save_entry(edit_vars, detail_window)
+
+
 
 if __name__ == "__main__":
     root = tk.Tk()
