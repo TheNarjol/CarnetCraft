@@ -3,9 +3,13 @@ import os
 import platform
 import qrcode
 import tempfile
+import io
 import logging
 import os
+import base64
 
+
+from PIL import Image
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 
 
@@ -63,7 +67,7 @@ class ImageGenerator:
             logging.error(f"Error al obtener la ruta de wkhtmltopdf: {str(e)}")
             raise
 
-    def generate_image(self, data_row):
+    def generate_carnet(self, data_row):
         """Genera una imagen a partir de los datos y el tipo de carnet proporcionado."""
         try:
             # Validar que data_row contenga los campos necesarios
@@ -83,10 +87,19 @@ class ImageGenerator:
                 raise FileNotFoundError("La plantilla de carnet no se pudo encontrar. Asegúrate de que el archivo exista en la ruta correcta.")
             
             try:
+                blob = self.convertir_str_a_bytes(data_row['RutaImagen'])
+                temp_photo_path = self.create_temp_photo_from_blob(blob)
+                print(f"Foto temporal creada en: {temp_photo_path}")
+            except Exception as e:
+                print(f"Error al crear la foto temporal: {str(e)}")
+                raise  # Relanzar la excepción para manejarla en el bloque externo
+
+
+            try:
                 # Intentar renderizar la plantilla
                 html_out = template.render(
                     data_row=data_row, 
-                    ruta_imagen=data_row['RutaImagen'],
+                    ruta_imagen=temp_photo_path,
                     imagen_url=imagen_url, 
                     qr_data=qr_data, 
                     color=color
@@ -97,8 +110,8 @@ class ImageGenerator:
                 print(f"Error al renderizar la plantilla: {str(e)}")
                 raise  # Vuelve a lanzar la excepción si es necesario
 
-            if not os.path.exists(data_row['RutaImagen']):
-                raise FileNotFoundError(f"La ruta de la imagen no existe: {ruta_imagen}")
+            if not os.path.exists(temp_photo_path):
+                raise FileNotFoundError(f"La ruta de la imagen no existe: {temp_photo_path}")
 
             options = {
                 "enable-local-file-access": ""
@@ -112,6 +125,7 @@ class ImageGenerator:
                 config=imgkit.config(wkhtmltoimage=self.path_wkhtmltopdf),
                 options=options,
             )
+            os.remove(temp_photo_path)
             return image_filename
 
         except FileNotFoundError as fnf_error:
@@ -151,7 +165,60 @@ class ImageGenerator:
         except Exception as e:
             logging.error(f"Error al crear el código QR: {str(e)}")
             raise
+    
+    def convertir_str_a_bytes(self, binary_str):
+        """
+        Convierte una cadena que contiene datos binarios en bytes.
 
+        Args:
+            binary_str (str): Cadena que contiene datos binarios.
+
+        Returns:
+            bytes: Datos binarios.
+        """
+        try:
+            return binary_str.encode('latin1')  # Usar 'latin1' para preservar los bytes
+        except Exception as e:
+            print(f"Error al convertir la cadena a bytes: {str(e)}")
+            raise    
+    
+    def create_temp_photo_from_blob(self, blob_data):
+        """
+        Crea una foto temporal a partir de datos en formato blob.
+
+        Args:
+            blob_data (bytes): Datos de la imagen en formato blob.
+
+        Returns:
+            str: Ruta del archivo temporal generado.
+
+        Raises:
+            ValueError: Si los datos blob están vacíos o no son válidos.
+            Exception: Si ocurre un error al procesar la imagen.
+        """
+        try:
+            # Verificar si los datos blob están vacíos o no son válidos
+            if not blob_data:
+                raise ValueError("Los datos blob están vacíos o no son válidos.")
+
+            # Crear un archivo temporal para guardar la imagen
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+                temp_file_path = temp_file.name
+
+                # Convertir los datos blob en una imagen y guardarla
+                image = Image.open(io.BytesIO(blob_data))
+                image.save(temp_file_path, format='PNG')
+
+                # Verificar si el archivo se creó correctamente
+                if not os.path.exists(temp_file_path):
+                    raise FileNotFoundError("No se pudo crear el archivo temporal de la imagen.")
+
+                return temp_file_path
+
+        except Exception as e:
+            logging.error(f"Error al crear la foto temporal desde blob: {str(e)}")
+            raise
+        
     def get_template(self, tipo_carnet):
         """Devuelve el código de color según el tipo de carnet."""
         # Diccionario que asocia tipos de carnet con códigos de color   
