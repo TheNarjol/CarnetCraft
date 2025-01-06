@@ -67,7 +67,7 @@ class ImageGeneratorApp:
             self.tree.insert("", "end", values=row)
 
         # Actualizar el número de páginas
-        self.pages = -(-len(row) // 5)  # Calcula el número de páginas necesarias
+        self.pages = -(-len(row) // 25)  # Calcula el número de páginas necesarias
 
         # Agregar botones de navegación por páginas
         self.add_pagination_buttons()
@@ -402,6 +402,30 @@ class ImageGeneratorApp:
         confirmation_window.destroy()  # Cerrar la ventana de confirmación
         self.update_row_colors()  # Actualizar colores después de cargar los datos
 
+    def reemplazar_abreviatura_oficina(self, data_row):
+        """
+        Reemplaza la abreviatura de la oficina en la fila de datos por el nombre completo.
+
+        Parámetros:
+        - data_row: Una tupla que contiene los datos de una fila.
+
+        Retorna:
+        - La misma fila de datos con la abreviatura de la oficina reemplazada por el nombre completo.
+        """
+        # Obtener la abreviatura de la oficina
+        oficina_abreviatura = data_row[3]
+        
+        # Buscar el nombre completo de la oficina correspondiente a la abreviatura
+        oficina_nombre = next((oficina[0] for oficina in self.oficinas if oficina[1] == oficina_abreviatura), None)
+        
+        # Si se encuentra el nombre completo, reemplazar la abreviatura
+        if oficina_nombre:
+            data_row = list(data_row)  # Convertir a lista para poder modificar
+            data_row[3] = oficina_nombre  # Reemplazar la abreviatura por el nombre completo
+            data_row = tuple(data_row)  # Convertir de vuelta a tupla
+        
+        return data_row
+
     def generate_images(self):
         """Genera imágenes para todos los carnets seleccionados en el Treeview."""
         # Verificar si hay al menos una entrada en el Treeview
@@ -438,89 +462,85 @@ class ImageGeneratorApp:
 
         total_generados = 0
         total_errores = 0
+        total_carnets = 0
         errores = []
+        column = ["Nombre", "Apellidos", "Cedula", "Adscrito", "Cargo", "RutaImagen", "TipoCarnet"]
 
         for item in selected_items:
             data_row = self.tree.item(item)["values"]
-            # Reemplazar la abreviatura por el nombre completo de la oficina
-            oficina_abreviatura = data_row[3]
-            oficina_nombre = next((oficina[0] for oficina in self.oficinas if oficina[1] == oficina_abreviatura), None)
-            if oficina_nombre:
-                data_row = list(data_row)  # Convertir a lista para poder modificar
-                data_row[3] = oficina_nombre  # Reemplazar la abreviatura por el nombre completo
-                data_row = tuple(data_row)  # Convertir de vuelta a tupla
-
-            # Comprobar que los campos obligatorios no estén vacíos
-            ruta_imagen = data_row[5]
-            tipo_carnet = data_row[6]
-            nombre = data_row[0]
-            apellidos = data_row[1]
-            cedula = data_row[2]
+            data_row = self.reemplazar_abreviatura_oficina(data_row)
+            if not self.validate_fields(data_row):
+                messagebox.showerror("Error", "Todos los campos deben ser completados y válidos.")
+                total_errores += 1
+                continue
             
-            if not nombre or not apellidos or not cedula:
-                messagebox.showwarning(
-                    "Advertencia",
-                    f"Faltan datos para el carnet: Nombre: {nombre}, Apellidos: {apellidos}, Cédula: {cedula}"
-                )
-                total_errores += 1
-                continue  # Saltar a la siguiente iteración
-
-            # Comprobar si la imagen existe
-            if not os.path.exists(ruta_imagen):
-                messagebox.showwarning(
-                    "Advertencia",
-                    f"Imagen no encontrada para {nombre} {apellidos} (Cédula: {cedula})"
-                )
-                total_errores += 1
-                continue  # Saltar a la siguiente iteración
-
             try:
                 # Generar la imagen y guardarla en la nueva carpeta
-                column = ["Nombre", "Apellidos", "Cedula", "Adscrito", "Cargo", "RutaImagen", "TipoCarnet"]
                 data = dict(zip(column, data_row))
-                image_filename = self.image_generator.generate_image(data)
+                image_filename = self.image_generator.generate_carnet(data)
                 # Mover la imagen generada a la carpeta
                 new_image_path = os.path.join(full_path, os.path.basename(image_filename))
                 os.rename(image_filename, new_image_path)
-                print(f"Imagen generada: {new_image_path}")
                 total_generados += 1  # Incrementar contador de generados
             
             except FileNotFoundError as fnf_error:
                 total_errores += 1
                 errores.append(f"Archivo no encontrado: {str(fnf_error)}")
                 print(str(e))
-                logging.error(f"Archivo no encontrado: {str(fnf_error)} - {nombre} {apellidos} (Cédula: {cedula})")
+                logging.error(f"Archivo no encontrado: {str(fnf_error)} - {data_row[0]} {data_row[1]} (Cédula: {data_row[2]})")
             except PermissionError as perm_error:
                 total_errores += 1
                 errores.append(f"Permiso denegado al acceder a: {str(perm_error)}")
                 print(str(e))
-                logging.error(f"Permiso denegado: {str(perm_error)} - {nombre} {apellidos} (Cédula: {cedula})")
+                logging.error(f"Permiso denegado: {str(perm_error)} - {data_row[0]} {data_row[1]} (Cédula: {data_row[2]})")
             except Exception as e:
                 total_errores += 1
-                error_message = f"Error al generar imagen para {nombre} {apellidos} (Cédula: {cedula}):"
+                error_message = f"Error al generar imagen para {data_row[0]} {data_row[1]} (Cédula: {data_row[2]}):"
                 print(str(e))
                 error_details = traceback.format_exc()  # Captura la traza del error
                 errores.append(f"{error_message}\nDetalles del error:\n{str(e)}")
                 print(error_details)
-                logging.error(f"No se pudo generar la imagen para {tipo_carnet}: {str(e)} - {nombre} {apellidos} (Cédula: {cedula})\nDetalles del error:\n{error_details}")
-                            
+                logging.error(f"No se pudo generar la imagen para {data_row[6]}: {str(e)} - {data_row[0]} {data_row[1]} (Cédula: {data_row[2]})\nDetalles del error:\n{error_details}")
+            total_carnets += 1
+
         # Mensaje final con el resumen de la operación
         if total_errores > 0:
             error_message = "\n".join(errores)
             messagebox.showerror(
                 "Errores en la generación",
-                f"Se generaron {total_generados} carnets con éxito.\n"
+                f"Se generaron {total_carnets}\{total_generados} carnets con éxito.\n"
                 f"Se encontraron errores en {total_errores} carnets:\n{error_message}"
                 )
         else:
             messagebox.showinfo(
-                "Éxito", f"Todas las imágenes seleccionadas han sido generadas. Total: {total_generados}"
+                "Éxito", f"Todas las imágenes seleccionadas han sido generadas. Total: {total_carnets}\{total_generados}"
             )
 
-    def is_valid_cedula(self, cedula):
-        """Valida que la cédula contenga solo números y tenga 7 u 8 dígitos."""
-        return cedula.isdigit() and len(cedula) in (7, 8)
+    def is_valid_name(self, name):
+        """
+        Valida que el nombre no contenga números ni caracteres especiales.
 
+        Parámetros:
+        - name: El nombre a validar.
+
+        Retorna:
+        - True si el nombre es válido, False en caso contrario.
+        """
+        return name.replace(" ", "").isalpha()
+
+    def is_valid_cedula(self, cedula):
+        """
+        Valida que la cédula contenga solo números y tenga 7 u 8 dígitos.
+
+        Parámetros:
+        - cedula: La cédula a validar.
+
+        Retorna:
+        - True si la cédula es válida, False en caso contrario.
+        """
+        cedula_str = str(cedula)
+        return  len(cedula_str) in (7, 8)
+    
     def validate_row(self, values):
         """
         Valida si una fila tiene datos faltantes o errores.
@@ -530,14 +550,9 @@ class ImageGeneratorApp:
         nombre = values[0]
         apellidos = values[1]
         cedula = values[2]
-        ruta_imagen = values[5]  # Índice 5 corresponde a la ruta de la imagen
 
         # Verificar datos faltantes
         if not nombre or not apellidos or not cedula or not ruta_imagen:
-            return 'missing_data'
-
-        # Verificar si la imagen existe
-        if not os.path.isfile(ruta_imagen):
             return 'missing_data'
 
         # Verificar errores en la cédula
@@ -545,6 +560,21 @@ class ImageGeneratorApp:
             return 'error_data'
 
         return None  # No hay errores ni datos faltantes
+    
+    def validate_fields(self, values):
+        """
+        Valida que los campos no estén vacíos, que la cédula sea válida, que el archivo de imagen exista y que los nombres no contengan números ni caracteres especiales.
+
+        Parámetros:
+        - values: Una lista de valores que corresponden a los campos.
+
+        Retorna:
+        - True si todos los campos son válidos, False en caso contrario.
+        """
+        return (all(values[:7]) and 
+                self.is_valid_cedula(values[2]) and 
+                self.is_valid_name(values[0]) and 
+                self.is_valid_name(values[1]))
     
     def update_row_colors(self):
         """Actualiza los colores de las filas según los datos."""
