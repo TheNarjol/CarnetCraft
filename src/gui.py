@@ -9,6 +9,7 @@ import traceback
 
 # Asegúrate de tener la clase ImageGenerator implementada
 from image_generator import ImageGenerator
+from database_manager import DatabaseManager
 from PIL import Image, ImageTk  # Asegúrate de tener Pillow instalado
 from datetime import datetime
 
@@ -55,6 +56,39 @@ class ImageGeneratorApp:
         
         # Cargar una imagen en blanco de 100x100 por defecto
         self.load_default_image()
+        self.database_manager = DatabaseManager()
+        self.fill_tree()
+        
+    def fill_tree(self, page=1):
+        self.clear_treeview()
+        row = self.database_manager.get_total_filas()
+        data = self.database_manager.fetch_data(page)
+        for row in data.itertuples(index=False):
+            self.tree.insert("", "end", values=row)
+
+        # Actualizar el número de páginas
+        self.pages = -(-len(row) // 5)  # Calcula el número de páginas necesarias
+
+        # Agregar botones de navegación por páginas
+        self.add_pagination_buttons()
+
+    def add_pagination_buttons(self):
+        # Eliminar los botones de navegación existentes
+        for widget in self.pagination_frame.winfo_children():
+            widget.destroy()
+
+        # Crear el frame para los botones de navegación
+        self.pagination_frame = tk.Frame(self.root)
+        self.pagination_frame.pack(pady=10)
+
+        # Agregar botones de navegación
+        for i in range(self.pages):
+            button = tk.Button(self.pagination_frame, text=str(i+1), command=lambda page=i+1: self.fill_tree(page))
+            button.pack(side=tk.LEFT, padx=5)
+    
+    def clear_treeview(self):
+        # Limpiar el contenido del Treeview
+        self.tree.delete(*self.tree.get_children())
 
     def maximize_window(self):
         """
@@ -129,6 +163,10 @@ class ImageGeneratorApp:
             self.root, text="+", command=self.open_new_entry_window
         )
         self.new_entry_button.pack(pady=5, anchor="w", padx=10)
+        
+        # Initialize pagination_frame using grid
+        self.pagination_frame = tk.Frame(self.root)
+        self.pagination_frame.pack(pady=5, anchor="w", padx=10) # Place it in the grid
 
     def create_sidebar(self):
         """Crea el sidebar con los labels y el botón de editar."""
