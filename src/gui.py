@@ -19,7 +19,6 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'  # Formato del log
 )
 
-
 class ImageGeneratorApp:
     def __init__(self, root):
         """Inicializa la aplicación de generación de carnets de imagen."""
@@ -518,7 +517,8 @@ class ImageGeneratorApp:
 
     def open_custom_entry_window(self):
         """Abre la ventana personalizada para agregar o editar oficinas."""
-        CustomEntryWindow(self.root, self, "Gestión de oficinas")
+        ofiEntryWindow(self.root, self, "Gestión de oficinas")
+
 
 class SettingsModel:
     def __init__(self):
@@ -605,8 +605,8 @@ class SettingsView:
             "mysql_host": self.mysql_host_var.get(),
             "mysql_port": self.mysql_port_var.get(),
         }
-        
-        
+
+
 class SettingsController:
     def __init__(self, root):
         """Inicializa el controlador de configuración."""
@@ -818,7 +818,7 @@ class EntryDetailWindow:
         self.save_entry(edit_vars, detail_window)
 
 
-class CustomEntryWindow:
+class ofiEntryWindow:
     def __init__(self, root, app, title):
         """Inicializa la ventana personalizada con un Treeview y botones de acción."""
         self.root = root
@@ -910,7 +910,7 @@ class CustomEntryWindow:
         tk.Button(self.add_edit_window, text="Cancelar", command=self.add_edit_window.destroy).grid(row=2, column=1, padx=5, pady=5, sticky="ew")
         # Mantener la ventana siempre encima
         self.add_edit_window.attributes("-topmost", True)
-        # Bloquear la interacción con el CustomEntryWindow
+        # Bloquear la interacción con el ofiEntryWindow
         self.add_edit_window.grab_set()
         
     def save_entry(self):
@@ -952,7 +952,7 @@ class CustomEntryWindow:
         else:
             pass  # No hacer nada si la respuesta es no
 
-        
+
 if __name__ == "__main__":
     root = tk.Tk()
     app = ImageGeneratorApp(root)
