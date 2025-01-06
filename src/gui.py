@@ -595,6 +595,21 @@ class ImageGeneratorApp:
         """Abre la ventana personalizada para agregar o editar oficinas."""
         ofiEntryWindow(self.root, self, "Gestión de oficinas")
 
+    def convertir_str_a_bytes(binary_str):
+        """
+        Convierte una cadena que contiene datos binarios en bytes.
+
+        Args:
+            binary_str (str): Cadena que contiene datos binarios.
+
+        Returns:
+            bytes: Datos binarios.
+        """
+        try:
+            return binary_str.encode('latin1')  # Usar 'latin1' para preservar los bytes
+        except Exception as e:
+            print(f"Error al convertir la cadena a bytes: {str(e)}")
+            raise
 
 class SettingsModel:
     def __init__(self):
