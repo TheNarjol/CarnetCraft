@@ -6,6 +6,8 @@ import json
 from tkinter import filedialog, messagebox, Menu
 from tkinter import ttk
 import traceback
+import io
+
 
 # Asegúrate de tener la clase ImageGenerator implementada
 from image_generator import ImageGenerator
@@ -260,7 +262,8 @@ class ImageGeneratorApp:
         """Carga y muestra la miniatura de la imagen en el sidebar."""
         
         try:
-            img = Image.open(img_path)
+            binario = self.convertir_str_a_bytes(img_path)
+            img = self.crear_image_thumbnail_binarios(binario)
             img.thumbnail((100, 100))  # Redimensionar la imagen
             img_tk = ImageTk.PhotoImage(img)
             self.image_display.config(image=img_tk)
@@ -595,7 +598,7 @@ class ImageGeneratorApp:
         """Abre la ventana personalizada para agregar o editar oficinas."""
         ofiEntryWindow(self.root, self, "Gestión de oficinas")
 
-    def convertir_str_a_bytes(binary_str):
+    def convertir_str_a_bytes(self, binary_str):
         """
         Convierte una cadena que contiene datos binarios en bytes.
 
@@ -609,6 +612,34 @@ class ImageGeneratorApp:
             return binary_str.encode('latin1')  # Usar 'latin1' para preservar los bytes
         except Exception as e:
             print(f"Error al convertir la cadena a bytes: {str(e)}")
+            raise
+    
+    def crear_image_thumbnail_binarios(self, binarios):
+        """
+        Crea una imagen desde datos binarios utilizando PIL.
+
+        Args:
+            binarios (bytes): Datos binarios de la imagen.
+
+        Returns:
+            Image: Objeto de imagen de PIL.
+
+        Raises:
+            ValueError: Si los datos binarios están vacíos o no son válidos.
+            Exception: Si ocurre un error al procesar la imagen.
+        """
+        try:
+            # Verificar si los datos binarios están vacíos o no son válidos
+            if not binarios:
+                raise ValueError("Los datos binarios están vacíos o no son válidos.")
+
+            # Convertir los datos binarios en una imagen usando PIL
+            imagen = Image.open(io.BytesIO(binarios))
+
+            return imagen
+
+        except Exception as e:
+            print(f"Error al crear la imagen desde binarios: {str(e)}")
             raise
 
 class SettingsModel:
