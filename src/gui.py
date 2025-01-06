@@ -151,6 +151,7 @@ class ImageGeneratorApp:
             "Cedula": tk.Label(self.sidebar, text="Cédula:", bg="lightgray"),
             "Adscrito": tk.Label(self.sidebar, text="Adscrito:", bg="lightgray"),
             "Cargo": tk.Label(self.sidebar, text="Cargo:", bg="lightgray"),
+            "Tipo": tk.Label(self.sidebar, text="Tipo:", bg="lightgray"),
         }
 
         # Colocar los labels en el sidebar
@@ -198,6 +199,8 @@ class ImageGeneratorApp:
             self.sidebar_labels["Cedula"].config(text=f"Cédula: {item_values[2]}")
             self.sidebar_labels["Adscrito"].config(text=f"Adscrito: {item_values[3]}")
             self.sidebar_labels["Cargo"].config(text=f"Cargo: {item_values[4]}")
+            self.sidebar_labels["Tipo"].config(text=f"Tipo: {item_values[6]}")
+            
 
             self.image_display.pack()  # Mostrar la imagen
             if item_values[5]:  # Verificar si el campo no está vacío
@@ -354,7 +357,9 @@ class ImageGeneratorApp:
                 row.get("Cedula", ""),
                 row.get("Adscrito", ""),
                 row.get("Cargo", ""),
-                ""  # Campo vacío para la ruta de la imagen
+                "",  # Campo vacío para la ruta de la imagen
+                "" # Campo vacío para tipo
+                
             ]
             self.tree.insert("", "end", values=values)
         confirmation_window.destroy()  # Cerrar la ventana de confirmación
@@ -400,7 +405,7 @@ class ImageGeneratorApp:
 
         for item in selected_items:
             data_row = self.tree.item(item)["values"]
-            tipo_carnet = self.tipo_carnet_var.get()
+            tipo_carnet = data_row[6]
             ruta_imagen = data_row[5]
 
             # Comprobar que los campos obligatorios no estén vacíos
@@ -426,25 +431,32 @@ class ImageGeneratorApp:
 
             try:
                 # Generar la imagen y guardarla en la nueva carpeta
-                image_filename = self.image_generator.generate_image(dict(zip(self.tree["columns"], data_row)), tipo_carnet, ruta_imagen)
+                column = ["Nombre", "Apellidos", "Cedula", "Adscrito", "Cargo", "RutaImagen", "TipoCarnet"]
+                data = dict(zip(column, data_row))
+                image_filename = self.image_generator.generate_image(data)
                 # Mover la imagen generada a la carpeta
                 new_image_path = os.path.join(full_path, os.path.basename(image_filename))
                 os.rename(image_filename, new_image_path)
                 print(f"Imagen generada: {new_image_path}")
                 total_generados += 1  # Incrementar contador de generados
+            
             except FileNotFoundError as fnf_error:
                 total_errores += 1
                 errores.append(f"Archivo no encontrado: {str(fnf_error)}")
+                print(str(e))
                 logging.error(f"Archivo no encontrado: {str(fnf_error)} - {nombre} {apellidos} (Cédula: {cedula})")
             except PermissionError as perm_error:
                 total_errores += 1
                 errores.append(f"Permiso denegado al acceder a: {str(perm_error)}")
+                print(str(e))
                 logging.error(f"Permiso denegado: {str(perm_error)} - {nombre} {apellidos} (Cédula: {cedula})")
             except Exception as e:
                 total_errores += 1
-                error_message = f"Error al generar imagen para {nombre} {apellidos} (Cédula: {cedula}): {str(e)}"
+                error_message = f"Error al generar imagen para {nombre} {apellidos} (Cédula: {cedula}):"
+                print(str(e))
                 error_details = traceback.format_exc()  # Captura la traza del error
-                errores.append(f"{error_message}\nDetalles del error:\n{error_details}")
+                errores.append(f"{error_message}\nDetalles del error:\n{str(e)}")
+                print(error_details)
                 logging.error(f"No se pudo generar la imagen para {tipo_carnet}: {str(e)} - {nombre} {apellidos} (Cédula: {cedula})\nDetalles del error:\n{error_details}")
                             
         # Mensaje final con el resumen de la operación
@@ -641,9 +653,6 @@ class EntryDetailWindow:
         self.item_values = item_values
         self.detail_window = tk.Toplevel(self.root)
         self.detail_window.title(title)
-        
-        # Set the size of the EntryDetailWindow
-        self.detail_window.geometry("270x430")
 
         # Make the EntryDetailWindow stay on top
         self.detail_window.wm_transient(self.root)
@@ -657,11 +666,15 @@ class EntryDetailWindow:
         # Set the focus to the EntryDetailWindow and prevent interaction with the main window
     
         # Variables para los campos de entrada
-        self.edit_vars = [tk.StringVar(value=value) for value in (item_values or [""] * 6)]
+        self.edit_vars = [tk.StringVar(value=value) for value in (item_values or [""] * 7)]
         self.item_id = None if item_values is None else self.app.tree.selection()[0]
         self.image_display = None
         self.image_path = self.edit_vars[5].get()  # Ruta de la imagen
         
+        # Opciones para el tipo de carnet
+        self.tipo_carnet_options = ["Profesional", "Gerencial", "Administrativo"]
+        self.edit_vars[6].set(item_values[6] if item_values and len(item_values) > 6 else self.tipo_carnet_options[0])
+
         # Cargar la imagen por defecto
         self.create_ui()
         self.load_image()
@@ -700,11 +713,16 @@ class EntryDetailWindow:
         self.image_display.grid(row=len(labels), column=0, columnspan=2, padx=5, pady=10)
 
         # Label para mostrar la ruta de la imagen (no editable)
-        self.image_path_label = tk.Label(self.detail_window, text="", bd=2, relief="sunken", wraplength=200)
-        self.image_path_label.grid(row=len(labels) + 1, column=0, columnspan=2, padx=5, pady=5)
+        self.image_path_label = tk.Label(self.detail_window, text="No Hay imagen", bd=2, relief="sunken", wraplength=200)
+        self.image_path_label.grid(row=len(labels) + 1, column=0, columnspan=2, padx=5, pady=5, sticky='e')
 
         # Botón para seleccionar la imagen
         tk.Button(self.detail_window, text="Seleccionar Imagen", command=self.select_image).grid(row=len(labels) + 2, column=0, columnspan=2, padx=5, pady=5)
+
+        # ComboBox para seleccionar el tipo de carnet
+        tk.Label(self.detail_window, text="Tipo de Carnet").grid(row=len(labels) + 3, column=0, padx=5, pady=5, sticky='e')
+        tipo_carnet_combobox = ttk.Combobox(self.detail_window, textvariable=self.edit_vars[6], values=self.tipo_carnet_options)
+        tipo_carnet_combobox.grid(row=len(labels) + 3, column=1, padx=5, pady=5)
 
         # Botón para guardar nueva entrada o cambios
         action = "Guardar Nueva Entrada" if self.item_values is None else "Guardar Cambios"
@@ -720,7 +738,7 @@ class EntryDetailWindow:
             self.detail_window,
             text=action,
             command=save_command
-        ).grid(row=len(labels) + 3, column=0, columnspan=2, padx=5, pady=5)
+        ).grid(row=len(labels) + 4, column=0, columnspan=2, padx=5, pady=5)
     
     def select_image(self):
         """Selecciona una imagen para el carnet con manejo de excepciones."""
@@ -760,9 +778,9 @@ class EntryDetailWindow:
         """Guarda una entrada en el Treeview después de validar los campos."""
         # Obtener los valores de los campos
         new_values = [var.get() for var in edit_vars]
-
+        
         # Validación de campos vacíos
-        if any(value.strip() == "" for value in new_values[:5]):  # Validar solo los primeros 5 campos
+        if any(value.strip() == "" for value in new_values[:7]):  # Validar solo los primeros 7 campos
             messagebox.showerror("Error", "Todos los campos deben ser completados.")
             return
 
@@ -775,7 +793,7 @@ class EntryDetailWindow:
         if not os.path.isfile(new_values[5]):
             messagebox.showerror("Error", "El archivo de imagen no existe.")
             return
-
+        
         # Actualizar o agregar la entrada en el Treeview
         if item_id is not None:
             # Actualizar entrada existente
