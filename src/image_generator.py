@@ -33,10 +33,13 @@ class ImageGenerator:
         self.env = Environment(loader=FileSystemLoader(templates_dir))
 
         # Acceder a la ruta del cargador
-        if isinstance(self.env.loader, FileSystemLoader):
-            # Obtener la ruta completa
-            print("Rutas de búsqueda de plantillas:")
-            print(templates_dir)  # Imprxime la ruta completa al directorio de plantillas
+        try:
+            # Acceder a la ruta del cargador
+            if isinstance(self.env.loader, FileSystemLoader):
+                # Obtener la ruta completa
+                self.env.loader.searchpath
+        except Exception as e:
+            print(f"Error al acceder a la ruta del cargador: {str(e)}")
 
         self.path_wkhtmltopdf = self.get_wkhtmltopdf_path()
         # The `get_wkhtmltopdf_path` method in the provided Python code
@@ -60,58 +63,48 @@ class ImageGenerator:
             logging.error(f"Error al obtener la ruta de wkhtmltopdf: {str(e)}")
             raise
 
-    def generate_image(self, data_row, tipo_carnet, ruta_imagen):
+    def generate_image(self, data_row):
         """Genera una imagen a partir de los datos y el tipo de carnet proporcionado."""
         try:
             # Validar que data_row contenga los campos necesarios
-            required_fields = ['Cedula', 'Cargo', 'Adscrito']
+            required_fields = ["Nombre", "Apellidos", "Cedula", "Adscrito", "Cargo", "RutaImagen", "TipoCarnet"]
             for field in required_fields:
                 if field not in data_row:
                     raise ValueError(f"Falta el campo requerido: {field}")
 
             # Generar la cadena para el código QR
             qr_data = self.create_qr_code(data_row)
-            color = self.get_template(tipo_carnet)
+            color = self.get_template(data_row['TipoCarnet'])
             try:
                 template = self.env.get_template("carnet_template.html")
-                print("Plantilla cargada con éxito.")
             except TemplateNotFound:
                 print("La plantilla no se encontró.")
                 logging.error("La plantilla 'carnet_template.html' no se encontró.")
                 raise FileNotFoundError("La plantilla de carnet no se pudo encontrar. Asegúrate de que el archivo exista en la ruta correcta.")
             
-            # Imprimir las rutas y datos antes de renderizar
-            print("Rutas y datos utilizados para renderizar la plantilla:")
-            print(f"  - Ruta de la imagen: {ruta_imagen}")
-            print(f"  - URL de la imagen: {imagen_url}")
-            print(f"  - URL de la imagen QR: {qr_data}")
-            
-            print(f"  - Datos de la fila: {data_row}")
-
             try:
                 # Intentar renderizar la plantilla
                 html_out = template.render(
                     data_row=data_row, 
-                    ruta_imagen=ruta_imagen,
+                    ruta_imagen=data_row['RutaImagen'],
                     imagen_url=imagen_url, 
                     qr_data=qr_data, 
                     color=color
                 )
-                print("Plantilla renderizada con éxito.")
             except Exception as e:
                 # Manejo de errores
                 logging.error(f"Error al renderizar la plantilla: {str(e)}")
                 print(f"Error al renderizar la plantilla: {str(e)}")
                 raise  # Vuelve a lanzar la excepción si es necesario
 
-            if not os.path.exists(ruta_imagen):
+            if not os.path.exists(data_row['RutaImagen']):
                 raise FileNotFoundError(f"La ruta de la imagen no existe: {ruta_imagen}")
 
             options = {
                 "enable-local-file-access": ""
             }
 
-            image_filename = f"{data_row['Cedula']}_{tipo_carnet}.png"
+            image_filename = f"{data_row['Cedula']}_{data_row['TipoCarnet']}.png"
 
             imgkit.from_string(
                 html_out,
@@ -169,10 +162,12 @@ class ImageGenerator:
         }   
         # Verificar si el tipo de carnet es válido y devolver el color correspondiente
         try:    
-            if tipo_carnet in colores:  
-                return colores[tipo_carnet] 
+            if "Administrativo" in colores:  
+                return colores["Administrativo"] 
             else:   
                 raise ValueError("Tipo de carnet no válido.")
         except Exception as e:
             logging.error(f"Error al obtener el template: {str(e)}")
-            raise
+            print(str(e))
+            print(tipo_carnet)
+            raise e
