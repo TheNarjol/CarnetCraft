@@ -404,13 +404,21 @@ class ImageGeneratorApp:
 
         for item in selected_items:
             data_row = self.tree.item(item)["values"]
-            tipo_carnet = data_row[6]
-            ruta_imagen = data_row[5]
+            # Reemplazar la abreviatura por el nombre completo de la oficina
+            oficina_abreviatura = data_row[3]
+            oficina_nombre = next((oficina[0] for oficina in self.oficinas if oficina[1] == oficina_abreviatura), None)
+            if oficina_nombre:
+                data_row = list(data_row)  # Convertir a lista para poder modificar
+                data_row[3] = oficina_nombre  # Reemplazar la abreviatura por el nombre completo
+                data_row = tuple(data_row)  # Convertir de vuelta a tupla
 
             # Comprobar que los campos obligatorios no estén vacíos
+            ruta_imagen = data_row[5]
+            tipo_carnet = data_row[6]
             nombre = data_row[0]
             apellidos = data_row[1]
             cedula = data_row[2]
+            
             if not nombre or not apellidos or not cedula:
                 messagebox.showwarning(
                     "Advertencia",
@@ -706,7 +714,14 @@ class EntryDetailWindow:
         labels = ["Nombre", "Apellidos", "Cédula", "Adscrito", "Cargo"]
         for i, label in enumerate(labels):
             tk.Label(self.detail_window, text=label).grid(row=i, column=0, padx=5, pady=5, sticky='e')
-            tk.Entry(self.detail_window, textvariable=self.edit_vars[i]).grid(row=i, column=1, padx=5, pady=5)
+            if label == "Adscrito":
+                # Crear un ComboBox para "Adscrito" usando las abreviaturas de las oficinas
+                self.adscrito_combobox = ttk.Combobox(self.detail_window, textvariable=self.edit_vars[3])
+                self.adscrito_combobox['values'] = [oficina[1] for oficina in self.app.oficinas]  # Obtener las abreviaturas de las oficinas
+                self.adscrito_combobox.grid(row=i, column=1, padx=5, pady=5)
+                self.adscrito_combobox.current(0)  # Seleccionar la primera opción por defecto
+            else:
+                tk.Entry(self.detail_window, textvariable=self.edit_vars[i]).grid(row=i, column=1, padx=5, pady=5)
 
         # Label para mostrar la miniatura de la imagen
         self.image_display = tk.Label(self.detail_window, bd=2, relief="sunken")
