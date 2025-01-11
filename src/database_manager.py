@@ -3,6 +3,7 @@ import json
 import mysql.connector
 from mysql.connector import Error
 import pandas as pd
+from funcion import convertir_imagen_a_binario
 
 class DatabaseManager:
     def __init__(self):
@@ -54,7 +55,7 @@ class DatabaseManager:
             print(f"Error al ejecutar la consulta: {e}")
             return None
 
-    def fetch_data(self, page=1, limit=10):
+    def fetch_data(self, page=1, limit=25):
         """Consulta datos de la base de datos y los devuelve como un DataFrame."""
         if self.connection is None:
             print("No hay conexión a la base de datos.")
@@ -79,7 +80,87 @@ class DatabaseManager:
         resultado = cursor.fetchone()
         cursor.close()
         return resultado[0]
-        
+
+    def save_new_entry(self, data):
+        """
+        Guarda una nueva entrada en la base de datos.
+
+        Parámetros:
+        - data (dict): Diccionario con los datos de la nueva entrada.
+            Debe contener las siguientes claves:
+                - nombre
+                - apellidos
+                - cedula
+                - adscrito
+                - cargo
+                - imagen (datos de la imagen en binario)
+                - tipo_carnet
+
+        Retorna:
+        - True si la entrada se guardó correctamente, False en caso contrario.
+        """
+        query = f"INSERT INTO {self.tabla_empleados} (nombre, apellidos, cedula, adscrito, cargo, imagen, tipo_carnet) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(query, (
+                data['nombre'],
+                data['apellidos'],
+                data['cedula'],
+                data['adscrito'],
+                data['cargo'],
+                data['imagen'], 
+                data['tipo_carnet']
+            ))
+            self.connection.commit()
+            return True
+        except Error as e:
+            print(f"Error al guardar la entrada: {e}")
+            return False
+
+    def update_entry(self, new_values):
+        """
+        Modifica un registro existente en la base de datos.
+
+        Parámetros:
+        - new_values: Valores nuevos para el registro.
+        """
+        query = f"UPDATE {self.tabla_empleados} SET nombre = %s, apellidos = %s, adscrito = %s, cargo = %s, imagen = %s, tipo_carnet = %s WHERE cedula = %s"
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(query, (
+                new_values[0],
+                new_values[1],
+                new_values[3],
+                new_values[4],
+                new_values[5],
+                new_values[6],
+                new_values[2]
+            ))
+            self.connection.commit()
+        except Error as e:
+            print(f"Error al modificar el registro: {e}")
+            
+    def check_duplicate_by_cedula(self, cedula):
+        """
+        Verifica si ya existe un registro con la misma cédula en la base de datos.
+
+        Parámetros:
+        - cedula (str): La cédula a verificar.
+
+        Retorna:
+        - True si ya existe un registro con la misma cédula, False en caso contrario.
+        """
+        query = f"SELECT COUNT(*) FROM {self.tabla_empleados} WHERE cedula = %s"
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(query, (cedula,))
+            resultado = cursor.fetchone()
+            cursor.close()
+            return resultado[0] > 0  # Retorna True si hay al menos un registro con la misma cédula
+        except Error as e:
+            print(f"Error al verificar duplicados: {e}")
+            return False
+
     def close_database_connection(self):
         """Cierra la conexión a la base de datos."""
         if self.connection and self.connection.is_connected():

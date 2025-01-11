@@ -815,12 +815,7 @@ class EntryDetailWindow:
         # Botón para guardar nueva entrada o cambios
         action = "Guardar Nueva Entrada" if self.item_values is None else "Guardar Cambios"
 
-        if self.item_values is None:
-            # Guardar nueva entrada
-            save_command = lambda: self.save_new_entry(self.edit_vars, self.detail_window)
-        else:
-            # Guardar cambios
-            save_command = lambda: self.save_changes(self.edit_vars, self.item_id, self.detail_window)
+        save_command = lambda: self.save_entry(self.edit_vars, self.detail_window, self.item_id)
 
         tk.Button(
             self.detail_window,
@@ -873,10 +868,17 @@ class EntryDetailWindow:
             self.load_default_image()  # Cargar la imagen por defecto si hay un error
 
     def save_entry(self, edit_vars, detail_window, item_id=None):
-        """Guarda una entrada en el Treeview después de validar los campos."""
+        """
+        Guarda una entrada en la base de datos o modifica un registro existente si la cédula ya existe.
+
+        Parámetros:
+        - edit_vars: Variables para los campos de entrada.
+        - detail_window: Ventana de detalles.
+        - item_id: ID del item en el Treeview (opcional).
+        """
         # Obtener los valores de los campos
         new_values = [var.get() for var in edit_vars]
-        
+
         # Validación de campos vacíos
         if any(value.strip() == "" for value in new_values[:7]):  # Validar solo los primeros 7 campos
             messagebox.showerror("Error", "Todos los campos deben ser completados.")
@@ -891,21 +893,45 @@ class EntryDetailWindow:
         if not os.path.isfile(new_values[5]):
             messagebox.showerror("Error", "El archivo de imagen no existe.")
             return
-        
+
+        # Convertir la imagen a binario
+        image_path = new_values[5]
+
+        if image_path:
+            with open(image_path, 'rb') as image_file:
+                image_binary = image_file.read()
+            new_values[5] = image_binary
+
         # Actualizar o agregar la entrada en el Treeview
         if item_id is not None:
             # Actualizar entrada existente
             self.app.tree.item(item_id, values=new_values)
+
         else:
             # Agregar nueva entrada
             self.app.tree.insert("", "end", values=new_values)
 
+        # Verificar si la cédula ya existe en la base de datos
+        if self.app.database_manager.check_duplicate_by_cedula(new_values[2]):
+            # Si la cédula ya existe, modificar el registro existente
+            self.app.database_manager.update_entry(new_values)
+        else:
+            # Si la cédula no existe, guardar una nueva entrada
+            self.app.database_manager.save_new_entry({
+                'nombre': new_values[0],
+                'apellidos': new_values[1],
+                'cedula': new_values[2],
+                'adscrito': new_values[3],
+                'cargo': new_values[4],
+                'imagen': new_values[5],
+                'tipo_carnet': new_values[6]
+            })
+
+        # Actualizar el Treeview
+        self.app.update_sidebar()
+
         # Cerrar la ventana de detalles
         detail_window.destroy()
-
-        # Actualizar colores de las filas
-        self.app.update_row_colors()  # Actualizar colores después de agregar una nueva entrada
-        self.app.update_sidebar()
     
     def save_changes(self, edit_vars, item_id, detail_window):
         """Guarda los cambios en una entrada existente."""
