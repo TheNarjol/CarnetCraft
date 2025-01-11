@@ -8,6 +8,8 @@ from tkinter import ttk
 import traceback
 import io
 
+from funcion import crear_image_thumbnail_binarios, convertir_str_a_bytes
+
 
 # Asegúrate de tener la clase ImageGenerator implementada
 from image_generator import ImageGenerator
@@ -262,8 +264,8 @@ class ImageGeneratorApp:
         """Carga y muestra la miniatura de la imagen en el sidebar."""
         
         try:
-            binario = self.convertir_str_a_bytes(img_path)
-            img = self.crear_image_thumbnail_binarios(binario)
+            binario = convertir_str_a_bytes(img_path)
+            img = crear_image_thumbnail_binarios(binario)
             img.thumbnail((100, 100))  # Redimensionar la imagen
             img_tk = ImageTk.PhotoImage(img)
             self.image_display.config(image=img_tk)
@@ -598,49 +600,6 @@ class ImageGeneratorApp:
         """Abre la ventana personalizada para agregar o editar oficinas."""
         ofiEntryWindow(self.root, self, "Gestión de oficinas")
 
-    def convertir_str_a_bytes(self, binary_str):
-        """
-        Convierte una cadena que contiene datos binarios en bytes.
-
-        Args:
-            binary_str (str): Cadena que contiene datos binarios.
-
-        Returns:
-            bytes: Datos binarios.
-        """
-        try:
-            return binary_str.encode('latin1')  # Usar 'latin1' para preservar los bytes
-        except Exception as e:
-            print(f"Error al convertir la cadena a bytes: {str(e)}")
-            raise
-    
-    def crear_image_thumbnail_binarios(self, binarios):
-        """
-        Crea una imagen desde datos binarios utilizando PIL.
-
-        Args:
-            binarios (bytes): Datos binarios de la imagen.
-
-        Returns:
-            Image: Objeto de imagen de PIL.
-
-        Raises:
-            ValueError: Si los datos binarios están vacíos o no son válidos.
-            Exception: Si ocurre un error al procesar la imagen.
-        """
-        try:
-            # Verificar si los datos binarios están vacíos o no son válidos
-            if not binarios:
-                raise ValueError("Los datos binarios están vacíos o no son válidos.")
-
-            # Convertir los datos binarios en una imagen usando PIL
-            imagen = Image.open(io.BytesIO(binarios))
-
-            return imagen
-
-        except Exception as e:
-            print(f"Error al crear la imagen desde binarios: {str(e)}")
-            raise
 
 class SettingsModel:
     def __init__(self):
@@ -890,15 +849,25 @@ class EntryDetailWindow:
         try:
             # Check if the image_path is a valid file and not a directory
             if os.path.isfile(self.image_path):
+                # Si image_path es una ruta válida, se trata de una imagen en disco
                 img = Image.open(self.image_path)
-                img.thumbnail((100, 100))
-                img_tk = ImageTk.PhotoImage(img)
-                self.image_display.config(image=img_tk)
-                self.image_display.image = img_tk
                 self.image_path_label.config(text=os.path.basename(self.image_path))  # Muestra solo el nombre del archivo
+            elif any(not char.isprintable() for char in self.image_path):
+                # Si image_path es un bytes, se trata de binarios
+                byna = convertir_str_a_bytes(self.image_path)
+                img = crear_image_thumbnail_binarios(byna)
+                self.image_path_label.config(text="Archivo")
+            
             else:
                 print(f"Invalid image path: {self.image_path}")
                 self.load_default_image()
+                return
+            
+            img.thumbnail((100, 100))
+            img_tk = ImageTk.PhotoImage(img)
+            self.image_display.config(image=img_tk)
+            self.image_display.image = img_tk
+            
         except Exception as e:
             print(f"Error al cargar la imagen: {e}")
             self.load_default_image()  # Cargar la imagen por defecto si hay un error
