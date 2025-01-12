@@ -62,6 +62,7 @@ class ImageGeneratorApp:
         self.load_default_image()
         self.database_manager = DatabaseManager()
         self.fill_tree()
+        self.update_row_colors()
         
     def fill_tree(self, page=1):
         self.clear_treeview()
@@ -211,7 +212,10 @@ class ImageGeneratorApp:
             self.sidebar, text="Editar", command=self.open_edit_window, state="disabled"
         )
         self.edit_button.pack(side="bottom", fill="x", pady=5)  # Pegar al borde inferior
-
+        self.delete_button = tk.Button(
+        self.sidebar, text="Eliminar", command=self.delete_entry
+        )
+        self.delete_button.pack(side="bottom", fill="x", pady=5)
         # Asociar el evento de selección con el método update_sidebar
         self.tree.bind("<<TreeviewSelect>>", self.update_sidebar)
 
@@ -260,6 +264,18 @@ class ImageGeneratorApp:
             self.clear_image_display()  # Limpiar la imagen
             self.edit_button.config(state="disabled")  # Desactivar el botón "Editar"
 
+    def delete_entry(self):
+        selected_item = self.tree.selection()
+        if selected_item:
+            item_values = self.tree.item(selected_item, 'values')
+            respuesta = messagebox.askyesno("Confirmar eliminación", f"¿Estás seguro de eliminar el registro de {item_values[0]} {item_values[1]} con cédula {item_values[2]}?")
+            if respuesta:
+                self.database_manager.delete_entry(item_values[2])
+                self.tree.delete(selected_item)
+                self.update_sidebar()
+        else:
+            messagebox.showerror("Error", "No se ha seleccionado ningún registro para eliminar.")
+            
     def load_image_thumbnail(self, img_path):
         """Carga y muestra la miniatura de la imagen en el sidebar."""
         
@@ -391,22 +407,66 @@ class ImageGeneratorApp:
         accept_button.pack(pady=5, anchor="w", padx=10)
 
     def accept_data(self, confirmation_window):
-        """Inserta los datos en el Treeview principal y cierra la ventana de confirmación."""
+        agregados = 0
+        actualizados = 0
+        no_actualizados = 0
+        errores = 0
+        total = 0
         for index, row in self.df.iterrows():
             values = [
-                row.get("Nombre", ""),
-                row.get("Apellidos", ""),
-                row.get("Cedula", ""),
-                row.get("Adscrito", ""),
-                row.get("Cargo", ""),
-                "",  # Campo vacío para la ruta de la imagen
-                "" # Campo vacío para tipo
-                
-            ]
-            self.tree.insert("", "end", values=values)
-        confirmation_window.destroy()  # Cerrar la ventana de confirmación
-        self.update_row_colors()  # Actualizar colores después de cargar los datos
+            row.get("Nombre", ""),
+            row.get("Apellidos", ""),
+            row.get("Cedula", ""),
+            row.get("Adscrito", ""),
+            row.get("Cargo", ""),
+            row.get("Imagen", ""),  # Campo para la ruta de la imagen
+            row.get("Tipo", "")  # Campo para el tipo de carnet
+        ]
+            total += 1
 
+            if values[0] and values[1] and values[2]:  # Verificar si NOMBRE, APELLIDO y CEDULA tienen información
+                print(values)
+                if self.database_manager.check_duplicate_by_cedula(values[2]):
+                    # Si el registro está repetido, actualizarlo
+                    respuesta = messagebox.askyesno("Confirmar actualización", f"¿Estás seguro de actualizar el registro de {values[0]} {values[1]} con cédula {values[2]}?")
+                    if respuesta:
+                        # Obtener los valores actuales del registro
+                        registro_actual = self.database_manager.fetch_data_by_cedula(values[2])
+                        # Actualizar solo los campos que no están vacíos
+                        new_values = {
+                            'nombre': registro_actual[1] if values[0] else registro_actual[1],
+                            'apellidos': registro_actual[2] if values[1] else registro_actual[2],
+                            'cedula': values[2],
+                            'adscrito': registro_actual[4] if values[3] else registro_actual[4],
+                            'cargo': registro_actual[5] if values[4] else registro_actual[5],
+                            'imagen': registro_actual[6] if values[5] else registro_actual[6],
+                            'tipo_carnet': registro_actual[7] if values[6] else registro_actual[7]
+                        }
+                        self.database_manager.update_entry(new_values)
+                        actualizados += 1
+                    elif not respuesta:
+                        no_actualizados += 1
+                    else:
+                        errores += 1
+                else:
+                    # Si el registro no está repetido, agregarlo a la base de datos
+                    self.database_manager.save_new_entry({
+                        'nombre': values[0],
+                        'apellidos': values[1],
+                        'cedula': values[2],
+                        'adscrito': values[3],
+                        'cargo': values[4],
+                        'imagen': values[5],
+                        'tipo_carnet': values[6]
+                    })
+                    agregados += 1
+            else:
+                errores += 1
+        confirmation_window.destroy()  # Cerrar la ventana de confirmación
+        self.fill_tree()  # Actualizar el Treeview con los nuevos datos
+        self.update_row_colors()  # Actualizar colores después de agregar los datos
+        messagebox.showinfo("Resumen", f"Se agregaron {agregados} registros nuevos, se actualizaron {actualizados}, no se actualizaron {no_actualizados} registros y se encontraron {errores} errores. \n Se encontraron {total} registros en total.")
+    
     def reemplazar_abreviatura_oficina(self, data_row):
         """
         Reemplaza la abreviatura de la oficina en la fila de datos por el nombre completo.
@@ -555,6 +615,7 @@ class ImageGeneratorApp:
         nombre = values[0]
         apellidos = values[1]
         cedula = values[2]
+        ruta_imagen = values[5]
 
         # Verificar datos faltantes
         if not nombre or not apellidos or not cedula or not ruta_imagen:
@@ -890,17 +951,17 @@ class EntryDetailWindow:
             return
 
         # Validación de la existencia del archivo de imagen
-        if not os.path.isfile(new_values[5]):
-            messagebox.showerror("Error", "El archivo de imagen no existe.")
-            return
-
-        # Convertir la imagen a binario
-        image_path = new_values[5]
-
-        if image_path:
+        if os.path.isfile(new_values[5]):
+            # Convertir la imagen a binario
+            image_path = new_values[5]
             with open(image_path, 'rb') as image_file:
                 image_binary = image_file.read()
             new_values[5] = image_binary
+        elif any(not char.isprintable() for char in self.image_path):
+            pass
+        else:
+            messagebox.showerror("Error", "El archivo de imagen no existe.")
+            return
 
         # Actualizar o agregar la entrada en el Treeview
         if item_id is not None:
@@ -914,7 +975,15 @@ class EntryDetailWindow:
         # Verificar si la cédula ya existe en la base de datos
         if self.app.database_manager.check_duplicate_by_cedula(new_values[2]):
             # Si la cédula ya existe, modificar el registro existente
-            self.app.database_manager.update_entry(new_values)
+            self.app.database_manager.update_entry({
+                'nombre': new_values[0],
+                'apellidos': new_values[1],
+                'cedula': new_values[2],
+                'adscrito': new_values[3],
+                'cargo': new_values[4],
+                'imagen': new_values[5],
+                'tipo_carnet': new_values[6]
+            })
         else:
             # Si la cédula no existe, guardar una nueva entrada
             self.app.database_manager.save_new_entry({
@@ -928,6 +997,7 @@ class EntryDetailWindow:
             })
 
         # Actualizar el Treeview
+        self.app.update_row_colors()
         self.app.update_sidebar()
 
         # Cerrar la ventana de detalles
