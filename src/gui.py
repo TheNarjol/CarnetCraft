@@ -30,6 +30,9 @@ class ImageGeneratorApp:
         self.root = root
         self.root.title("Carnet Craft")
         
+        self.oficinas = self.get_oficinas()
+        self.tipo_carnet_options = self.get_tipo_carnet_options()
+
         # Iniciar la ventana maximizada
         self.maximize_window()  # Método para manejar la maximización
         
@@ -48,7 +51,6 @@ class ImageGeneratorApp:
         
         # DataFrame para almacenar los datos
         self.df = None
-        self.oficinas = [("Oficina 1", "OF1"), ("Oficina 2", "OF2")]
 
 
         # Instancia del generador de imágenes
@@ -63,19 +65,28 @@ class ImageGeneratorApp:
         self.database_manager = DatabaseManager()
         self.fill_tree()
         self.update_row_colors()
-        
-    def fill_tree(self, page=1):
-        self.clear_treeview()
-        row = self.database_manager.get_total_filas()
-        data = self.database_manager.fetch_data(page)
-        for row in data.itertuples(index=False):
-            self.tree.insert("", "end", values=row)
 
-        # Actualizar el número de páginas
-        self.pages = -(-len(row) // 25)  # Calcula el número de páginas necesarias
+    def get_tipo_carnet_options(self):
+        # Obtener los tipos de carnet de la base de datos o de un archivo de configuración
+        # ...
+        return ["Profesional", "Gerencial", "Administrativo"]
+    
+    def get_oficinas(self):
+        # Obtener los nombres de las oficinas de la base de datos o de un archivo de configuración
+        # ...
+        return [("Oficina 1", "OF1"), ("Oficina 2", "OF2")]
+    
+    def fill_tree(self, adscrito=None, tipo=None, page=1):
+        self.clear_treeview()
+        data = self.database_manager.fetch_data(adscrito, tipo, page)
+        for row in data:
+            self.tree.insert("", "end", values=row)
+        self.pages = -(-len(data) // 25)  # Calcula el número de páginas necesarias
+        
 
         # Agregar botones de navegación por páginas
         self.add_pagination_buttons()
+        self.update_row_colors()
 
     def add_pagination_buttons(self):
         # Eliminar los botones de navegación existentes
@@ -172,7 +183,54 @@ class ImageGeneratorApp:
         # Initialize pagination_frame using grid
         self.pagination_frame = tk.Frame(self.root)
         self.pagination_frame.pack(pady=5, anchor="w", padx=10) # Place it in the grid
+        
+        #Filtros
+        self.filter_frame = tk.Frame(self.root)
+        self.filter_frame.pack(pady=5, anchor="w", padx=10)
 
+        self.adscrito_label = tk.Label(self.filter_frame, text="Adscrito:")
+        self.adscrito_label.pack(side=tk.LEFT, padx=5)
+
+        self.adscrito_var = tk.StringVar()
+        self.adscrito_combobox = ttk.Combobox(self.filter_frame, textvariable=self.adscrito_var)
+        self.adscrito_combobox['values'] = [oficina[0] for oficina in self.oficinas]  # Obtener los nombres de las oficinas
+        self.adscrito_combobox.pack(side=tk.LEFT, padx=5)
+
+        self.adscrito_clear_button = tk.Button(self.filter_frame, text="x", command=self.clear_adscrito_filter)
+        self.adscrito_clear_button.pack(side=tk.LEFT, padx=5)
+
+        self.tipo_label = tk.Label(self.filter_frame, text="Tipo:")
+        self.tipo_label.pack(side=tk.LEFT, padx=5)
+
+        self.tipo_var = tk.StringVar()
+        self.tipo_combobox = ttk.Combobox(self.filter_frame, textvariable=self.tipo_var)
+        self.tipo_combobox['values'] = self.tipo_carnet_options  # Obtener los tipos de carnet
+        self.tipo_combobox.pack(side=tk.LEFT, padx=5)
+
+        self.tipo_clear_button = tk.Button(self.filter_frame, text="x", command=self.clear_tipo_filter)
+        self.tipo_clear_button.pack(side=tk.LEFT, padx=5)
+
+        self.filter_button = tk.Button(self.filter_frame, text="Filtrar", command=self.filter_data)
+        self.filter_button.pack(side=tk.LEFT, padx=5)
+        
+
+    def clear_adscrito_filter(self):
+        self.adscrito_var.set("")
+        self.filter_data()
+
+    def clear_tipo_filter(self):
+        self.tipo_var.set("")
+        self.filter_data()
+        
+    def filter_data(self):
+        adscrito = self.adscrito_combobox.get()
+        tipo = self.tipo_combobox.get()
+        for oficina in self.oficinas:
+            if oficina[0] == adscrito:
+                adscrito = oficina[1]
+                break
+        self.fill_tree(adscrito, tipo)
+        
     def create_sidebar(self):
         """Crea el sidebar con los labels y el botón de editar."""
         # Crear el sidebar

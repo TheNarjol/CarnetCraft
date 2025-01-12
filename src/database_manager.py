@@ -55,23 +55,27 @@ class DatabaseManager:
             print(f"Error al ejecutar la consulta: {e}")
             return None
 
-    def fetch_data(self, page=1, limit=25):
-        """Consulta datos de la base de datos y los devuelve como un DataFrame."""
-        if self.connection is None:
-            print("No hay conexión a la base de datos.")
-            return None
-
+    def fetch_data(self, adscrito=None, tipo=None, page=1):
+        limit = 25
         offset = (page - 1) * limit
-        query = f"SELECT nombre, apellidos, cedula, adscrito, cargo, imagen, tipo_carnet FROM {self.tabla_empleados} LIMIT {limit} OFFSET {offset}"
-        
+        if adscrito and tipo:
+            query = f"SELECT nombre, apellidos, cedula, adscrito, cargo, imagen, tipo_carnet FROM {self.tabla_empleados} WHERE adscrito = '{adscrito}' AND tipo_carnet = '{tipo}' LIMIT {limit} OFFSET {offset}"
+        elif adscrito:
+            query = f"SELECT nombre, apellidos, cedula, adscrito, cargo, imagen, tipo_carnet FROM {self.tabla_empleados} WHERE adscrito = '{adscrito}' LIMIT {limit} OFFSET {offset}"
+        elif tipo:
+            query = f"SELECT nombre, apellidos, cedula, adscrito, cargo, imagen, tipo_carnet FROM {self.tabla_empleados} WHERE tipo_carnet = '{tipo}' LIMIT {limit} OFFSET {offset}"
+        else:
+            query = f"SELECT nombre, apellidos, cedula, adscrito, cargo, imagen, tipo_carnet FROM {self.tabla_empleados} LIMIT {limit} OFFSET {offset}"
         try:
-            df = pd.read_sql(query, self.connection)
-            return df
-        
+            cursor = self.connection.cursor()
+            cursor.execute(query)
+            resultado = cursor.fetchall()
+            cursor.close()
+            return resultado
         except Error as e:
-            print(f"Error al ejecutar la consulta: {e}")
+            print(f"Error al obtener datos: {e}")
             return None
-    
+        
     def get_total_filas(self):
         """Obtiene el número total de filas en la tabla carnets."""
         query = f"SELECT COUNT(*) AS total_filas FROM {self.tabla_empleados}"
