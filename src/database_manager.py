@@ -118,28 +118,31 @@ class DatabaseManager:
             return False
 
     def update_entry(self, new_values):
-        """
-        Modifica un registro existente en la base de datos.
-
-        Parámetros:
-        - new_values: Valores nuevos para el registro.
-        """
         query = f"UPDATE {self.tabla_empleados} SET nombre = %s, apellidos = %s, adscrito = %s, cargo = %s, imagen = %s, tipo_carnet = %s WHERE cedula = %s"
         try:
             cursor = self.connection.cursor()
             cursor.execute(query, (
-                new_values[0],
-                new_values[1],
-                new_values[3],
-                new_values[4],
-                new_values[5],
-                new_values[6],
-                new_values[2]
+                new_values['nombre'],
+                new_values['apellidos'],
+                new_values['adscrito'],
+                new_values['cargo'],
+                new_values['imagen'],
+                new_values['tipo_carnet'],
+                new_values['cedula']
             ))
             self.connection.commit()
         except Error as e:
             print(f"Error al modificar el registro: {e}")
-            
+    
+    def delete_entry(self, cedula):
+        query = f"DELETE FROM {self.tabla_empleados} WHERE cedula = %s"
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(query, (cedula,))
+            self.connection.commit()
+        except Error as e:
+            print(f"Error al eliminar el registro: {e}")
+    
     def check_duplicate_by_cedula(self, cedula):
         """
         Verifica si ya existe un registro con la misma cédula en la base de datos.
@@ -166,3 +169,15 @@ class DatabaseManager:
         if self.connection and self.connection.is_connected():
             self.connection.close()
             print("Conexión a la base de datos cerrada.")
+    
+    def fetch_data_by_cedula(self, cedula):
+        query = f"SELECT * FROM {self.tabla_empleados} WHERE cedula = %s"
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(query, (cedula,))
+            resultado = cursor.fetchone()
+            cursor.close()
+            return resultado
+        except Error as e:
+            print(f"Error al obtener datos por cédula: {e}")
+            return None
