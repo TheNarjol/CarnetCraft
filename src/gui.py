@@ -110,10 +110,11 @@ class ImageGeneratorApp:
         for widget in self.pagination_frame.winfo_children():
             widget.destroy()
 
-        # Agregar botones de navegación
-        for i in range(self.pages):
-            button = tk.Button(self.pagination_frame, text=str(i+1), command=lambda page=i+1: self.fill_tree(page))
-            button.pack(side=tk.LEFT, padx=5)
+        if self.pages > 1:
+            # Agregar botones de navegación
+            for i in range(self.pages):
+                button = tk.Button(self.pagination_frame, text=str(i+1), command=lambda page=i+1: self.fill_tree(adscrito, tipo, page))
+                button.pack(side=tk.LEFT, padx=5)
     
     def clear_treeview(self):
         # Limpiar el contenido del Treeview
@@ -152,7 +153,14 @@ class ImageGeneratorApp:
     
     def create_filter(self):
         #Filtros
-        
+        self.search_label = tk.Label(self.filter_frame, text="Buscar por cédula:")
+        self.search_label.pack(side=tk.LEFT, padx=5)
+
+        self.search_entry = tk.Entry(self.filter_frame)
+        self.search_entry.pack(side=tk.LEFT, padx=5)
+
+        self.search_button = tk.Button(self.filter_frame, text="Buscar", command=self.search_by_cedula)
+        self.search_button.pack(side=tk.LEFT, padx=5)
 
         self.adscrito_label = tk.Label(self.filter_frame, text="Adscrito:")
         self.adscrito_label.pack(side=tk.LEFT, padx=5)
@@ -234,7 +242,19 @@ class ImageGeneratorApp:
                 adscrito = oficina[1]
                 break
         self.fill_tree(adscrito, tipo)
-        
+    
+    def search_by_cedula(self):
+        cedula = self.search_entry.get()
+        # Buscar en la base de datos o en el archivo de datos
+        data = self.database_manager.fetch_data_by_cedula(cedula)
+        if data:
+            # Mostrar la entrada encontrada
+            self.tree.delete(*self.tree.get_children())
+            self.tree.insert("", "end", values=data)
+        else:
+            # Mostrar un mensaje de error
+            messagebox.showerror("Error", "No se encontró la cédula")
+    
     def create_sidebar(self):
         """Crea el sidebar con los labels y el botón de editar."""
         
@@ -907,18 +927,9 @@ class EntryDetailWindow:
         self.create_ui()
         self.load_image()
 
-        # Agregar un evento para cuando se hace clic en la ventana principal
-        self.root.bind("<1>", self.on_root_click)
         # Asegurarse de que la ventana esté visible antes de llamar a grab_set
         self.detail_window.update()  # Forzar la actualización de la ventana
-        self.detail_window.grab_set()  # Establecer el foco en la ventana secundaria
         
-    def on_root_click(self, event):
-        # Setear el foco a la ventana principal
-        self.root.focus_set()
-        
-        # Producir un sonido o parpadeo visual
-        self.root.bell()
     
     def load_default_image(self):
         """Carga una imagen en blanco de 100x100 por defecto."""
@@ -1086,6 +1097,7 @@ class EntryDetailWindow:
         self.app.update_row_colors()
         self.app.update_sidebar()
 
+        self.app.root.focus_set()
         # Cerrar la ventana de detalles
         detail_window.destroy()
     
