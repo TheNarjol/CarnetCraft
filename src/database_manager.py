@@ -75,6 +75,18 @@ class DatabaseManager:
         except Error as e:
             print(f"Error al obtener datos: {e}")
             return None
+    
+    def fetch_data_by_cedula(self, cedula):
+        query = f"SELECT nombre, apellidos, cedula, adscrito, cargo, imagen, tipo_carnet FROM {self.tabla_empleados} WHERE cedula = %s"
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(query, (cedula,))
+            resultado = cursor.fetchone()
+            cursor.close()
+            return resultado
+        except Error as e:
+            print(f"Error al obtener datos: {e}")
+            return None
         
     def get_total_filas(self):
         """Obtiene el número total de filas en la tabla carnets."""
