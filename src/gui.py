@@ -41,13 +41,30 @@ class ImageGeneratorApp:
         
         # Crear el Frame principal para el Treeview y el Sidebar
         self.main_frame = tk.Frame(root)
-        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10, side=tk.BOTTOM)
+        
+        # Crear el sidebar
+        self.sidebar = tk.Frame(self.main_frame, width=200, bg="lightgray")
+        self.sidebar.pack(side="right", fill="y", padx=10, pady=10)
+        self.sidebar.pack_propagate(False)  # Evitar que el sidebar se expanda automáticamente
+        
+        # Crear el frame para los botones de navegación
+        self.pagination_frame = tk.Frame(self.main_frame)
+        self.pagination_frame.pack(fill="y", pady=10, side=tk.BOTTOM)
+        
+        # Crear el frame para los botones de Control
+        self.control_frame = tk.Frame(self.main_frame)
+        self.control_frame.pack(fill="x", pady=10)
+        
+        self.filter_frame = tk.Frame(self.root)
+        self.filter_frame.pack(pady=5, padx=10, side=tk.TOP, fill=tk.X)
         
         # Crear el Treeview y los botones de selección
         self.create_treeview_and_buttons()
         
         # Crear el Sidebar
         self.create_sidebar()
+        self.create_filter()
         
         # DataFrame para almacenar los datos
         self.df = None
@@ -93,10 +110,6 @@ class ImageGeneratorApp:
         for widget in self.pagination_frame.winfo_children():
             widget.destroy()
 
-        # Crear el frame para los botones de navegación
-        self.pagination_frame = tk.Frame(self.root)
-        self.pagination_frame.pack(pady=10)
-
         # Agregar botones de navegación
         for i in range(self.pages):
             button = tk.Button(self.pagination_frame, text=str(i+1), command=lambda page=i+1: self.fill_tree(page))
@@ -136,57 +149,10 @@ class ImageGeneratorApp:
         edit_menu.add_command(label="Configuraciones", command=self.open_settings_window)
         edit_menu.add_command(label="Oficinas", command=self.open_custom_entry_window)
         self.menu_bar.add_cascade(label="Editar", menu=edit_menu)
-
-    def create_treeview_and_buttons(self):
-        """Crea el Treeview y los botones de selección."""
-        # Botón para seleccionar o deseleccionar todos
-        self.select_all_button = tk.Button(
-            self.root,
-            text="Seleccionar Todos",
-            command=self.toggle_select_all,
-        )
-        self.select_all_button.pack(pady=5, anchor="w", padx=10)
-        
-        # Tabla para mostrar los datos
-        self.tree = ttk.Treeview(
-            self.main_frame,
-            columns=("Nombre", "Apellidos", "Cedula", "Adscrito"),
-            show="headings"
-        )
-        
-        # Definir los nombres de las columnas
-        self.tree.heading("Nombre", text="Nombre")
-        self.tree.heading("Apellidos", text="Apellidos")
-        self.tree.heading("Cedula", text="Cédula")
-        self.tree.heading("Adscrito", text="Adscrito")
-
-        
-        # Configurar encabezados de la tabla
-        for col in self.tree["columns"]:
-            self.tree.heading(col, text=col)
-        self.tree.pack(side="left", fill="both", expand=True)
-        
-        # Asociar el evento de doble clic con el método open_detail_window
-        self.tree.bind("<Double-1>", self.open_detail_window)
-        
-        # Botón para generar imágenes
-        self.generate_button = tk.Button(
-            self.root, text="Generar Imágenes", command=self.generate_images)
-        self.generate_button.pack(pady=5, anchor="se", padx=10)
-
-        # Botón para crear una nueva entrada
-        self.new_entry_button = tk.Button(
-            self.root, text="+", command=self.open_new_entry_window
-        )
-        self.new_entry_button.pack(pady=5, anchor="w", padx=10)
-        
-        # Initialize pagination_frame using grid
-        self.pagination_frame = tk.Frame(self.root)
-        self.pagination_frame.pack(pady=5, anchor="w", padx=10) # Place it in the grid
-        
+    
+    def create_filter(self):
         #Filtros
-        self.filter_frame = tk.Frame(self.root)
-        self.filter_frame.pack(pady=5, anchor="w", padx=10)
+        
 
         self.adscrito_label = tk.Label(self.filter_frame, text="Adscrito:")
         self.adscrito_label.pack(side=tk.LEFT, padx=5)
@@ -213,7 +179,45 @@ class ImageGeneratorApp:
         self.filter_button = tk.Button(self.filter_frame, text="Filtrar", command=self.filter_data)
         self.filter_button.pack(side=tk.LEFT, padx=5)
         
+    def create_treeview_and_buttons(self):
+        """Crea el Treeview y los botones de selección."""
+        # Botón para crear una nueva entrada
+        self.new_entry_button = tk.Button(
+            self.control_frame, text="Agregar", command=self.open_new_entry_window
+        )
 
+        self.new_entry_button.pack(pady=5, anchor="w", padx=10, side=tk.LEFT)
+        
+        # Botón para seleccionar o deseleccionar todos
+        self.select_all_button = tk.Button(
+            self.control_frame,
+            text="Seleccionar Todos",
+            command=self.toggle_select_all,
+        )
+        self.select_all_button.pack(pady=5, anchor="w", padx=10, side=tk.LEFT)
+        
+        # Tabla para mostrar los datos
+        self.tree = ttk.Treeview(
+            self.main_frame,
+            columns=("Nombre", "Apellidos", "Cedula", "Adscrito"),
+            show="headings"
+        )
+        
+        # Definir los nombres de las columnas
+        self.tree.heading("Nombre", text="Nombre")
+        self.tree.heading("Apellidos", text="Apellidos")
+        self.tree.heading("Cedula", text="Cédula")
+        self.tree.heading("Adscrito", text="Adscrito")
+
+        
+        # Configurar encabezados de la tabla
+        for col in self.tree["columns"]:
+            self.tree.heading(col, text=col)
+        self.tree.pack(side="left", fill="both", expand=True)
+        
+        # Asociar el evento de doble clic con el método open_detail_window
+        self.tree.bind("<Double-1>", self.open_detail_window)
+        
     def clear_adscrito_filter(self):
         self.adscrito_var.set("")
         self.filter_data()
@@ -233,11 +237,7 @@ class ImageGeneratorApp:
         
     def create_sidebar(self):
         """Crea el sidebar con los labels y el botón de editar."""
-        # Crear el sidebar
-        self.sidebar = tk.Frame(self.main_frame, width=200, bg="lightgray")
-        self.sidebar.pack(side="right", fill="y", padx=10, pady=10)
-        self.sidebar.pack_propagate(False)  # Evitar que el sidebar se expanda automáticamente
-
+        
         # Label para mostrar el estado de la selección (ninguna, una o múltiple)
         self.selection_status_label = tk.Label(
             self.sidebar, text="Ninguna selección", bg="lightgray", font=("Arial", 12, "bold")
@@ -270,10 +270,18 @@ class ImageGeneratorApp:
             self.sidebar, text="Editar", command=self.open_edit_window, state="disabled"
         )
         self.edit_button.pack(side="bottom", fill="x", pady=5)  # Pegar al borde inferior
+        
+        # Botón para Eliminar
         self.delete_button = tk.Button(
-        self.sidebar, text="Eliminar", command=self.delete_entry
-        )
+            self.sidebar, text="Eliminar", command=self.delete_entry, state="disabled"
+            )
         self.delete_button.pack(side="bottom", fill="x", pady=5)
+        
+        # Botón para generar imágenes
+        self.generate_button = tk.Button(
+            self.sidebar, text="Generar Imágenes", command=self.generate_images, state="disabled")
+        self.generate_button.pack(side="bottom", pady=5, padx=5, fill="x")
+        
         # Asociar el evento de selección con el método update_sidebar
         self.tree.bind("<<TreeviewSelect>>", self.update_sidebar)
 
@@ -289,6 +297,9 @@ class ImageGeneratorApp:
                 label.pack_forget()  # Ocultar los labels de detalles
             self.clear_image_display()  # Limpiar la imagen
             self.edit_button.config(state="disabled")  # Desactivar el botón "Editar"
+            self.delete_button.config(state="disabled")  # Activar el botón "ekiminar"
+                        
+            self.generate_button.config(state="disabled")  # Activar el botón "general"
         elif len(selected_items) == 1:
             # Una fila seleccionada
             self.selection_status_label.pack_forget()  # Ocultar el label de estado
@@ -312,6 +323,12 @@ class ImageGeneratorApp:
                 self.clear_image_display()
             self.edit_button.config(state="normal")  # Activar el botón "Editar"
             self.edit_button.pack(side="bottom", fill="x", pady=5)  # Asegurarse de que el botón esté visible
+            
+            self.delete_button.config(state="normal")  # Activar el botón "ekiminar"
+            self.delete_button.pack(side="bottom", fill="x", pady=5)  # Asegurarse de que el botón esté visible
+            
+            self.generate_button.config(state="normal")  # Activar el botón "ekiminar"
+            self.generate_button.pack(side="bottom", fill="x", pady=5)  # Asegurarse de que el botón esté visible
 
         else:
             # Selección múltiple
@@ -321,18 +338,29 @@ class ImageGeneratorApp:
                 label.pack_forget()  # Ocultar los labels de detalles
             self.clear_image_display()  # Limpiar la imagen
             self.edit_button.config(state="disabled")  # Desactivar el botón "Editar"
+            self.generate_button.config(state="normal")  # Activar el botón "general"
 
     def delete_entry(self):
-        selected_item = self.tree.selection()
-        if selected_item:
-            item_values = self.tree.item(selected_item, 'values')
-            respuesta = messagebox.askyesno("Confirmar eliminación", f"¿Estás seguro de eliminar el registro de {item_values[0]} {item_values[1]} con cédula {item_values[2]}?")
-            if respuesta:
-                self.database_manager.delete_entry(item_values[2])
-                self.tree.delete(selected_item)
-                self.update_sidebar()
+        selected_items = self.tree.selection()
+        total = 0
+        eliminado = 0
+        mantenido = 0
+        if selected_items:
+            for item in selected_items:
+                    total += 1
+                    item_values = self.tree.item(item, 'values')
+                    respuesta = messagebox.askyesno("Confirmar eliminación", f"¿Estás seguro de eliminar el registro de {item_values[0]} {item_values[1]} con cédula {item_values[2]}?")
+                    if respuesta:
+                        eliminado += 1
+                        self.database_manager.delete_entry(item_values[2])
+                        self.tree.delete(item)
+                    else:
+                        mantenido += 1            
         else:
             messagebox.showerror("Error", "No se ha seleccionado ningún registro para eliminar.")
+        # después de agregar los datos
+        messagebox.showinfo("Eliminar", f"Se Elimaron {eliminado} registros, {mantenido} sin cambios  \n  {total} registros en total.")
+        self.update_sidebar()
             
     def load_image_thumbnail(self, img_path):
         """Carga y muestra la miniatura de la imagen en el sidebar."""
@@ -378,7 +406,7 @@ class ImageGeneratorApp:
 
     def open_detail_window(self, event):
         """Abre una ventana para ver y editar los detalles de un trabajador seleccionado."""
-        selected_item = self.tree.selection()
+        item = self.tree.selection()
         if selected_item:
             item_values = self.tree.item(selected_item, 'values')
             self.open_entry_window("Editar Entrada", item_values)
