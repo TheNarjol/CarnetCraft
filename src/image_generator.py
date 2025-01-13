@@ -114,7 +114,10 @@ class ImageGenerator:
                 raise FileNotFoundError(f"La ruta de la imagen no existe: {temp_photo_path}")
 
             options = {
-                "enable-local-file-access": ""
+                "enable-local-file-access": "",
+                "width": 300,  # Establecer el ancho de la imagen
+                "disable-smart-width": "",  # Deshabilitar el ajuste automático de ancho
+        
             }
 
             image_filename = f"{data_row['Cedula']}_{data_row['TipoCarnet']}.png"
