@@ -59,7 +59,7 @@ class ImageGenerator:
                     os.path.dirname(os.path.abspath(__file__)),
                     "wkhtmltox",
                     "bin",
-                    "wkhtmltopdf.exe",
+                    "wkhtmltoimage.exe",
                 )
             else:  # Asumir que es Linux
                 return "/usr/bin/wkhtmltoimage"  # Asegúrate de que wkhtmltopdf esté en el PATH
@@ -112,12 +112,15 @@ class ImageGenerator:
 
             if not os.path.exists(temp_photo_path):
                 raise FileNotFoundError(f"La ruta de la imagen no existe: {temp_photo_path}")
+            
+            if not os.path.exists(temp_photo_path):
+                raise FileNotFoundError(f"La ruta de la Plantilla no existe: {imagen_url}")
+
 
             options = {
                 "enable-local-file-access": "",
-                "width": 300,  # Establecer el ancho de la imagen
+                "width": 804,  # Establecer el ancho de la imagen
                 "disable-smart-width": "",  # Deshabilitar el ajuste automático de ancho
-        
             }
 
             image_filename = f"{data_row['Cedula']}_{data_row['TipoCarnet']}.png"
@@ -232,8 +235,8 @@ class ImageGenerator:
         }   
         # Verificar si el tipo de carnet es válido y devolver el color correspondiente
         try:    
-            if "Administrativo" in colores:  
-                return colores["Administrativo"] 
+            if tipo_carnet in colores:  
+                return colores[tipo_carnet] 
             else:   
                 raise ValueError("Tipo de carnet no válido.")
         except Exception as e:
