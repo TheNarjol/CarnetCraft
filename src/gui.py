@@ -679,12 +679,12 @@ class ImageGeneratorApp:
             error_message = "\n".join(errores)
             messagebox.showerror(
                 "Errores en la generación",
-                f"Se generaron {total_carnets}\{total_generados} carnets con éxito.\n"
+                f"Se generaron {total_carnets} / {total_generados} carnets con éxito.\n"
                 f"Se encontraron errores en {total_errores} carnets:\n{error_message}"
                 )
         else:
             messagebox.showinfo(
-                "Éxito", f"Todas las imágenes seleccionadas han sido generadas. Total: {total_carnets}\{total_generados}"
+                "Éxito", f"Todas las imágenes seleccionadas han sido generadas. Total: {total_carnets} / {total_generados}"
             )
 
     def is_valid_name(self, name):
@@ -930,7 +930,6 @@ class EntryDetailWindow:
         # Asegurarse de que la ventana esté visible antes de llamar a grab_set
         self.detail_window.update()  # Forzar la actualización de la ventana
         
-    
     def load_default_image(self):
         """Carga una imagen en blanco de 100x100 por defecto."""
         img = Image.new('RGB', (100, 100), color=(255, 255, 255))  # Crear una imagen en blanco
@@ -1054,8 +1053,8 @@ class EntryDetailWindow:
             with open(image_path, 'rb') as image_file:
                 image_binary = image_file.read()
             new_values[5] = image_binary
-        elif any(not char.isprintable() for char in self.image_path):
-            pass
+        elif any(not char.isprintable() for char in new_values[5]):
+            new_values[5] = convertir_str_a_bytes(new_values[5])
         else:
             messagebox.showerror("Error", "El archivo de imagen no existe.")
             return
