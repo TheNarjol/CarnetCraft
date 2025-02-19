@@ -572,6 +572,62 @@ class DatabaseManager:
             self.connection.close()
             print("Conexión a la base de datos cerrada.")
     
+    def delete_entry(self, cedula):
+        """
+        Elimina un registro de trabajador de la base de datos usando su cédula.
+        Parámetros:
+        - cedula (str): La cédula del trabajador a eliminar.
+        Retorna:
+        - True si el registro se eliminó correctamente, False en caso contrario.
+        """
+        try:
+            id_trabajador = self.fetch_id_by_cedula(cedula)
+            if id_trabajador is None:
+                print("No se encontró el trabajador con la cédula proporcionada.")
+                return False
+
+            # Eliminar los registros en la tabla carnets relacionados con el trabajador
+            self.delete_related_carnets(id_trabajador)
+
+            # Ahora eliminar el trabajador
+            self.delete_trabajador(cedula)
+
+            return True
+
+        except Error as e:
+            print(f"Error al eliminar el registro: {e}")
+            return False
+
+    def delete_related_carnets(self, id_trabajador):
+        """
+        Elimina los registros en la tabla carnets relacionados con el trabajador.
+        Parámetros:
+        - id_trabajador (int): ID del trabajador.
+        """
+        try:
+            cursor = self.connection.cursor()
+            delete_carnets_query = f"DELETE FROM {self.table_carnet} WHERE id_trabajador = %s"
+            cursor.execute(delete_carnets_query, (id_trabajador,))
+            self.connection.commit()
+            cursor.close()
+        except Error as e:
+            print(f"Error al eliminar los carnets relacionados: {e}")
+
+    def delete_trabajador(self, cedula):
+        """
+        Elimina un trabajador de la base de datos usando su cédula.
+        Parámetros:
+        - cedula (str): La cédula del trabajador a eliminar.
+        """
+        try:
+            cursor = self.connection.cursor()
+            delete_trabajador_query = f"DELETE FROM {self.tabla_empleados} WHERE cedula = %s"
+            cursor.execute(delete_trabajador_query, (cedula,))
+            self.connection.commit()
+            cursor.close()
+        except Error as e:
+            print(f"Error al eliminar el trabajador: {e}")
+    
     def fetch_data_by_cedula(self, cedula):
         query = f"SELECT * FROM {self.tabla_empleados} WHERE cedula = %s"
         try:
