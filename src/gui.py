@@ -29,8 +29,10 @@ class ImageGeneratorApp:
         """Inicializa la aplicación de generación de carnets de imagen."""
         self.root = root
         self.root.title("Carnet Craft")
+        self.database_manager = DatabaseManager()
+        self.get_oficinas()
         
-        self.oficinas = self.get_oficinas()
+        
         self.tipo_carnet_options = self.get_tipo_carnet_options()
 
         # Iniciar la ventana maximizada
@@ -79,19 +81,18 @@ class ImageGeneratorApp:
         
         # Cargar una imagen en blanco de 100x100 por defecto
         self.load_default_image()
-        self.database_manager = DatabaseManager()
         self.fill_tree()
         self.update_row_colors()
 
     def get_tipo_carnet_options(self):
         # Obtener los tipos de carnet de la base de datos o de un archivo de configuración
         # ...
-        return ["Profesional", "Gerencial", "Administrativo"]
+        return ["Profesional", "Gerencial", "Administrativo", "Coordinadores", "Obrero", "Seguridad"]
     
     def get_oficinas(self):
         # Obtener los nombres de las oficinas de la base de datos o de un archivo de configuración
         # ...
-        return [("Oficina 1", "OF1"), ("Oficina 2", "OF2")]
+        self.oficinas = self.database_manager.fetch_oficinas()
     
     def fill_tree(self, adscrito=None, tipo=None, page=1):
         self.clear_treeview()
@@ -426,7 +427,7 @@ class ImageGeneratorApp:
 
     def open_detail_window(self, event):
         """Abre una ventana para ver y editar los detalles de un trabajador seleccionado."""
-        item = self.tree.selection()
+        selected_item = self.tree.selection()
         if selected_item:
             item_values = self.tree.item(selected_item, 'values')
             self.open_entry_window("Editar Entrada", item_values)
@@ -518,17 +519,51 @@ class ImageGeneratorApp:
         no_actualizados = 0
         errores = 0
         total = 0
+
+        # Lista de tipos de carnet permitidos
+        tipos_carnet_permitidos = ["Profesional", "Gerencial", "Administrativo", "Coordinadores", "Obrero", "Seguridad"]  # Reemplaza con los tipos de carnet válidos
+
+        # Oficina predeterminada en caso de no coincidir
+        oficina_predeterminada = self.oficinas[0][1]  # Abreviatura de la oficina predeterminada
+
         for index, row in self.df.iterrows():
             values = [
-            row.get("Nombre", ""),
-            row.get("Apellidos", ""),
-            row.get("Cedula", ""),
-            row.get("Adscrito", ""),
-            row.get("Cargo", ""),
-            row.get("Imagen", ""),  # Campo para la ruta de la imagen
-            row.get("Tipo", "")  # Campo para el tipo de carnet
-        ]
+                row.get("Nombre", ""),
+                row.get("Apellidos", ""),
+                row.get("Cedula", ""),
+                row.get("Adscrito", ""),
+                row.get("Cargo", ""),
+                row.get("Imagen", ""),  # Campo para la ruta de la imagen
+                row.get("Tipo", "")  # Campo para el tipo de carnet
+            ]
             total += 1
+
+            # Verificar si el tipo de carnet es válido
+            if values[6] not in tipos_carnet_permitidos:
+                # Si no es válido, asignar el valor predeterminado (primer tipo de carnet permitido)
+                values[6] = tipos_carnet_permitidos[0]
+                print(f"Advertencia: Tipo de carnet no válido. Se asignó el valor predeterminado: {tipos_carnet_permitidos[0]}")
+
+            # Verificar si el campo "adscrito" coincide con una abreviatura o nombre de oficina
+            adscrito = values[3]
+            oficina_encontrada = None
+
+            # Buscar si el adscrito coincide con una abreviatura o nombre de oficina
+            for oficina in self.oficinas:
+                if adscrito == oficina[1]:  # Si coincide con una abreviatura
+                    oficina_encontrada = oficina[1]  # Dejar la abreviatura
+                    break
+                elif adscrito == oficina[0]:  # Si coincide con un nombre
+                    oficina_encontrada = oficina[1]  # Cambiar por la abreviatura
+                    break
+
+            # Si no se encontró coincidencia, asignar la oficina predeterminada
+            if not oficina_encontrada:
+                oficina_encontrada = oficina_predeterminada
+                print(f"Advertencia: Adscrito '{adscrito}' no coincide con ninguna oficina. Se asignó la oficina predeterminada: {oficina_predeterminada}")
+
+            # Actualizar el valor de adscrito en los valores
+            values[3] = oficina_encontrada
 
             if values[0] and values[1] and values[2]:  # Verificar si NOMBRE, APELLIDO y CEDULA tienen información
                 print(values)
@@ -543,10 +578,10 @@ class ImageGeneratorApp:
                             'nombre': registro_actual[1] if values[0] else registro_actual[1],
                             'apellidos': registro_actual[2] if values[1] else registro_actual[2],
                             'cedula': values[2],
-                            'adscrito': registro_actual[4] if values[3] else registro_actual[4],
+                            'adscrito': values[3],  # Usar el valor actualizado de adscrito
                             'cargo': registro_actual[5] if values[4] else registro_actual[5],
                             'imagen': registro_actual[6] if values[5] else registro_actual[6],
-                            'tipo_carnet': registro_actual[7] if values[6] else registro_actual[7]
+                            't ipo_carnet': registro_actual[7] if values[6] else registro_actual[7]
                         }
                         self.database_manager.update_entry(new_values)
                         actualizados += 1
@@ -560,7 +595,7 @@ class ImageGeneratorApp:
                         'nombre': values[0],
                         'apellidos': values[1],
                         'cedula': values[2],
-                        'adscrito': values[3],
+                        'adscrito': values[3],  # Usar el valor actualizado de adscrito
                         'cargo': values[4],
                         'imagen': values[5],
                         'tipo_carnet': values[6]
@@ -568,6 +603,7 @@ class ImageGeneratorApp:
                     agregados += 1
             else:
                 errores += 1
+
         confirmation_window.destroy()  # Cerrar la ventana de confirmación
         self.fill_tree()  # Actualizar el Treeview con los nuevos datos
         self.update_row_colors()  # Actualizar colores después de agregar los datos
@@ -648,9 +684,27 @@ class ImageGeneratorApp:
             try:
                 # Generar la imagen y guardarla en la nueva carpeta
                 data = dict(zip(column, data_row))
+                
+                # Generar el nombre del archivo
                 image_filename = self.image_generator.generate_carnet(data)
-                # Mover la imagen generada a la carpeta
-                new_image_path = os.path.join(full_path, os.path.basename(image_filename))
+
+                # Verificar si el archivo ya existe en el directorio de destino
+                base_filename = os.path.basename(image_filename)  # Obtener el nombre base del archivo
+                name, ext = os.path.splitext(base_filename)  # Separar el nombre y la extensión
+                counter = 1  # Inicializar el contador
+
+                # Bucle para encontrar un nombre de archivo no usado
+                while True:
+                    # Construir el nombre del archivo con el contador
+                    new_image_filename = f"{name}_{counter}{ext}" if counter > 1 else f"{name}{ext}"
+                    new_image_path = os.path.join(full_path, new_image_filename)  # Ruta completa del archivo
+
+                    # Verificar si el archivo ya existe
+                    if not os.path.exists(new_image_path):
+                        break  # Salir del bucle si el archivo no existe
+                    counter += 1  # Incrementar el contador si el archivo existe
+
+                # Mover la imagen generada a la carpeta con el nuevo nombre
                 os.rename(image_filename, new_image_path)
                 total_generados += 1  # Incrementar contador de generados
             
@@ -765,7 +819,7 @@ class ImageGeneratorApp:
 
     def open_custom_entry_window(self):
         """Abre la ventana personalizada para agregar o editar oficinas."""
-        ofiEntryWindow(self.root, self, "Gestión de oficinas")
+        ofiEntryWindow(self.root, self, self.database_manager)
 
 
 class SettingsModel:
@@ -920,7 +974,7 @@ class EntryDetailWindow:
         self.image_path = self.edit_vars[5].get()  # Ruta de la imagen
         
         # Opciones para el tipo de carnet
-        self.tipo_carnet_options = ["Profesional", "Gerencial", "Administrativo"]
+        self.tipo_carnet_options = ["Profesional", "Gerencial", "Administrativo", "Coordinadores", "Obrero", "Seguridad"]
         self.edit_vars[6].set(item_values[6] if item_values and len(item_values) > 6 else self.tipo_carnet_options[0])
 
         # Cargar la imagen por defecto
@@ -942,6 +996,15 @@ class EntryDetailWindow:
     def create_ui(self):
         """Crea la interfaz de usuario para la ventana de entrada/detalle."""
         labels = ["Nombre", "Apellidos", "Cédula", "Adscrito", "Cargo"]
+        # Función de validación para limitar el número de caracteres
+        def validate_length(text, max_length):
+            max_length = int(max_length)  # Convertir max_length a entero
+            return len(text) <= max_length
+        
+        # Registrar la función de validación
+        vcmd = (self.detail_window.register(validate_length), '%P', '%d')
+
+        
         for i, label in enumerate(labels):
             tk.Label(self.detail_window, text=label).grid(row=i, column=0, padx=5, pady=5, sticky='e')
             if label == "Adscrito":
@@ -951,8 +1014,17 @@ class EntryDetailWindow:
                 self.adscrito_combobox.grid(row=i, column=1, padx=5, pady=5)
                 self.adscrito_combobox.current(0)  # Seleccionar la primera opción por defecto
             else:
-                tk.Entry(self.detail_window, textvariable=self.edit_vars[i]).grid(row=i, column=1, padx=5, pady=5)
+                # Crear un campo de entrada (Entry) con límite de caracteres
+                entry = tk.Entry(self.detail_window, textvariable=self.edit_vars[i])
+                if label == "Nombre" or label == "Apellidos":
+                    # Limitar a 20 caracteres
+                    entry.config(validate="key", validatecommand=(vcmd[0], '%P', 24))
+                elif label == "Cargo":
+                    # Limitar a 25 caracteres
+                    entry.config(validate="key", validatecommand=(vcmd[0], '%P', 25))
+                entry.grid(row=i, column=1, padx=5, pady=5)
 
+        
         # Label para mostrar la miniatura de la imagen
         self.image_display = tk.Label(self.detail_window, bd=2, relief="sunken")
         self.image_display.grid(row=len(labels), column=0, columnspan=2, padx=5, pady=10)
@@ -997,7 +1069,7 @@ class EntryDetailWindow:
                 self.load_default_image()  # Cargar la imagen por defecto si hay un error
 
     def load_image(self):
-        """Carga la imagen en la interfaz."""
+        """Carga la imagen en la interfaz, verificando su tamaño y redimensionando si es necesario."""
         try:
             # Check if the image_path is a valid file and not a directory
             if os.path.isfile(self.image_path):
@@ -1009,21 +1081,38 @@ class EntryDetailWindow:
                 byna = convertir_str_a_bytes(self.image_path)
                 img = crear_image_thumbnail_binarios(byna)
                 self.image_path_label.config(text="Archivo")
-            
             else:
                 print(f"Invalid image path: {self.image_path}")
                 self.load_default_image()
                 return
-            
+
+            # Obtener las dimensiones de la imagen
+            width, height = img.size
+
+            # Verificar si la imagen es menor a 300x300
+            if width < 300 or height < 300:
+                print("Advertencia: La imagen es demasiado pequeña. Debe ser al menos de 300x300 píxeles.")
+                self.load_default_image()
+                return
+
+            # Verificar si la imagen es mayor a 400x400 y redimensionar si es necesario
+            if width > 400 or height > 400:
+                # Calcular el nuevo tamaño manteniendo la proporción
+                ratio = max(300 / width, 300 / height)
+                new_width = int(width * ratio)
+                new_height = int(height * ratio)
+                img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+            # Redimensionar la imagen para mostrarla en la interfaz
             img.thumbnail((100, 100))
             img_tk = ImageTk.PhotoImage(img)
             self.image_display.config(image=img_tk)
             self.image_display.image = img_tk
-            
+
         except Exception as e:
             print(f"Error al cargar la imagen: {e}")
             self.load_default_image()  # Cargar la imagen por defecto si hay un error
-
+            
     def save_entry(self, edit_vars, detail_window, item_id=None):
         """
         Guarda una entrada en la base de datos o modifica un registro existente si la cédula ya existe.
@@ -1109,139 +1198,185 @@ class EntryDetailWindow:
         self.save_entry(edit_vars, detail_window)
 
 
-class ofiEntryWindow:
-    def __init__(self, root, app, title):
-        """Inicializa la ventana personalizada con un Treeview y botones de acción."""
-        self.root = root
-        self.app = app
-        self.title = title
-        self.custom_window = tk.Toplevel(self.root)
-        self.custom_window.title(title)
-        
-        # Configurar el tamaño de la ventana
-        self.custom_window.geometry("400x300")
-        
-        # Centrar la ventana en la pantalla
-        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (400 // 2)
-        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (300 // 2)
-        self.custom_window.geometry(f"+{x}+{y}")
-        
-        # Hacer que la ventana sea no redimensionable
-        self.custom_window.resizable(False, False)
-        
-        # Variables para almacenar los datos del Treeview
-        self.data = self.app.oficinas
-        
-        # Crear la interfaz de usuario
-        self.create_ui()
+class EditOficinaWindow:
+    def __init__(self, parent, database_manager, ofi_entry_window, id_oficina=None, nombre_oficina=None, codigo_oficina=None):
+        """
+        Inicializa la ventana de edición de oficinas.
 
-    def create_ui(self):
-        """Crea la interfaz de usuario para la ventana personalizada."""
-        # Crear el Treeview
-        self.tree = ttk.Treeview(self.custom_window, columns=("Nombre", "Abreviatura"), show="headings")
-        self.tree.heading("Nombre", text="Nombre")
-        self.tree.heading("Abreviatura", text="Abreviatura")
-        self.tree.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
-        
-        # Agregar la información de self.app.oficinas al Treeview
-        for oficina in self.app.oficinas:
-            self.tree.insert("", "end", values=oficina)
-        
-        # Crear los botones de acción
-        self.add_button = tk.Button(self.custom_window, text="Agregar", command=self.open_add_edit_window)
-        self.add_button.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
-        
-        self.edit_button = tk.Button(self.custom_window, text="Editar", command=self.open_add_edit_window)
-        self.edit_button.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
-        
-        self.delete_button = tk.Button(self.custom_window, text="Eliminar", command=self.delete_entry)
-        self.delete_button.grid(row=1, column=2, padx=5, pady=5, sticky="ew")
-        
-        self.accept_button = tk.Button(self.custom_window, text="Aceptar", command=self.accept_changes)
-        self.accept_button.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
-        
-        self.cancel_button = tk.Button(self.custom_window, text="Cancelar", command=self.cancel_changes)
-        self.cancel_button.grid(row=2, column=2, padx=5, pady=5, sticky="ew")
-        
-        # Configurar el peso de las filas y columnas para que se expandan correctamente
-        self.custom_window.grid_rowconfigure(0, weight=1)
-        self.custom_window.grid_columnconfigure(0, weight=1)
-        self.custom_window.grid_columnconfigure(1, weight=1)
-        self.custom_window.grid_columnconfigure(2, weight=1)
-        
-        # Mantener la ventana siempre encima
-        self.custom_window.attributes("-topmost", True)
+        Parámetros:
+        - parent: Ventana principal o contenedor.
+        - database_manager: Instancia de DatabaseManager para interactuar con la base de datos.
+        - id_oficina (int): ID de la oficina a editar (opcional).
+        - nombre_oficina (str): Nombre de la oficina a editar (opcional).
+        - codigo_oficina (str): Código de la oficina a editar (opcional).
+        """
+        print(nombre_oficina, codigo_oficina, id_oficina)
+        self.parent = parent
+        self.database_manager = database_manager
+        self.ofi_entry_window = ofi_entry_window  # Guardar la instancia de ofiEntryWindow
+        self.id_oficina = id_oficina
+        self.nombre_oficina = nombre_oficina
+        self.codigo_oficina = codigo_oficina
+        self.setup_ui()
 
-    def open_add_edit_window(self):
-        """Abre una ventana para agregar o editar una entrada."""
-        self.add_edit_window = tk.Toplevel(self.custom_window)
-        self.add_edit_window.title("Agregar/Editar Entrada")
-        
-        # Centrar la ventana en la pantalla
-        x = self.custom_window.winfo_x() + (self.custom_window.winfo_width() // 2) - (200 // 2)
-        y = self.custom_window.winfo_y() + (self.custom_window.winfo_height() // 2) - (100 // 2)
-        self.add_edit_window.geometry(f"+{x}+{y}")
-        
-        # Hacer que la ventana sea no redimensionable
-        self.add_edit_window.resizable(False, False)
-        
-        # Variables para los campos de entrada
-        self.nombre_var = tk.StringVar()
-        self.abreviatura_var = tk.StringVar()
-        
-        # Crear la interfaz de usuario para la ventana de agregar/editar
-        tk.Label(self.add_edit_window, text="Nombre:").grid(row=0, column=0, padx=5, pady=5, sticky="e")
-        tk.Entry(self.add_edit_window, textvariable=self.nombre_var).grid(row=0, column=1, padx=5, pady=5)
+    def setup_ui(self):
+        """
+        Configura la interfaz de usuario de la ventana de edición.
+        """
+        self.window = tk.Toplevel(self.parent)
+        self.window.title("Editar Oficina" if self.id_oficina else "Agregar Oficina")
 
-        tk.Label(self.add_edit_window, text="Abreviatura:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
-        tk.Entry(self.add_edit_window, textvariable=self.abreviatura_var).grid(row=1, column=1, padx=5, pady=5)
+        # Campos de entrada
+        tk.Label(self.window, text="Nombre de la oficina:").grid(row=0, column=0, padx=10, pady=5)
+        self.entry_nombre = tk.Entry(self.window)
+        self.entry_nombre.grid(row=0, column=1, padx=10, pady=5)
 
-        # Botones de Aceptar y Cancelar
-        tk.Button(self.add_edit_window, text="Aceptar", command=self.save_entry).grid(row=2, column=0, padx=5, pady=5, sticky="ew")
-        tk.Button(self.add_edit_window, text="Cancelar", command=self.add_edit_window.destroy).grid(row=2, column=1, padx=5, pady=5, sticky="ew")
-        # Mantener la ventana siempre encima
-        self.add_edit_window.attributes("-topmost", True)
-        # Bloquear la interacción con el ofiEntryWindow
-        self.add_edit_window.grab_set()
-        
-    def save_entry(self):
-        """Guarda la entrada en el Treeview y en el atributo data."""
-        nombre = self.nombre_var.get()
-        abreviatura = self.abreviatura_var.get()
-        
-        if nombre and abreviatura:
-            # Comprobación para no tener una entrada repetida
-            if (nombre, abreviatura) in self.data:
-                messagebox.showerror("Error", "Entrada repetida. No se puede agregar una entrada con el mismo nombre y abreviatura.", parent=self.add_edit_window)
-            elif nombre in [oficina[0] for oficina in self.data]:
-                messagebox.showerror("Error", "Nombre existente. No se puede agregar una entrada con el mismo nombre.", parent=self.add_edit_window)
-            elif abreviatura in [oficina[1] for oficina in self.data]:
-                messagebox.showerror("Error", "Abreviatura existente. No se puede agregar una entrada con la misma abreviatura.", parent=self.add_edit_window)
+        tk.Label(self.window, text="Código de la oficina:").grid(row=1, column=0, padx=10, pady=5)
+        self.entry_codigo = tk.Entry(self.window)
+        self.entry_codigo.grid(row=1, column=1, padx=10, pady=5)
+
+        # Llenar campos si se está editando una oficina
+        if self.id_oficina:
+            self.entry_nombre.insert(0, self.nombre_oficina)
+            self.entry_codigo.insert(0, self.codigo_oficina)
+
+        # Botón para guardar o actualizar
+        button_text = "Actualizar" if self.id_oficina else "Guardar"
+        tk.Button(self.window, text=button_text, command=self.save).grid(row=2, column=0, columnspan=2, pady=10)
+
+    def save(self):
+        """
+        Guarda o actualiza la oficina en la base de datos.
+        """
+        nuevo_nombre = self.entry_nombre.get()
+        nuevo_codigo = self.entry_codigo.get()
+
+        if self.id_oficina:
+            # Actualizar la oficina existente
+            if self.database_manager.update_oficina(self.id_oficina, nuevo_nombre, nuevo_codigo):
+                messagebox.showinfo("Éxito", "Oficina actualizada correctamente.")
             else:
-                self.data.append((nombre, abreviatura))
-                self.tree.insert("", "end", values=(nombre, abreviatura))
-                self.add_edit_window.destroy()
+                messagebox.showerror("Error", "No se pudo actualizar la oficina.")
+                
+        else:
+            # Aquí puedes implementar la lógica para agregar una nueva oficina si es necesario save_oficina
+            if self.database_manager.save_oficina( nuevo_nombre, nuevo_codigo):
+                messagebox.showinfo("Éxito", "Oficina Agregada correctamente.")
+            else:
+                messagebox.showerror("Error", "No se pudo actualizar la oficina.")
+        self.ofi_entry_window.load_oficinas()
+        self.window.destroy()
+
+        
+class ofiEntryWindow:
+    def __init__(self, parent, ImageGeneratorApp ,database_manager):
+        """
+        Inicializa la ventana para gestionar oficinas.
+
+        Parámetros:
+        - parent: Ventana principal o contenedor.
+        - database_manager: Instancia de DatabaseManager para interactuar con la base de datos.
+        """
+        self.parent = parent
+        self.ImageGeneratorApp = ImageGeneratorApp
+        self.database_manager = database_manager
+        self.setup_ui()
+        self.load_oficinas()  # Carga las oficinas al iniciar la ventana
+
+    def setup_ui(self):
+        """
+        Configura la interfaz de usuario de la ventana.
+        """
+        self.window = tk.Toplevel(self.parent)
+        self.window.title("Gestión de Oficinas")
+
+        # Configuración del Treeview
+        self.tree = ttk.Treeview(self.window, columns=( "Nombre", "Código"), show="headings")
+        self.tree.heading("Nombre", text="Nombre")
+        self.tree.heading("Código", text="Código")
+        self.tree.grid(row=0, column=0, columnspan=3, padx=10, pady=10)
+
+        # Botones
+        tk.Button(self.window, text="Agregar", command=self.open_add_window).grid(row=1, column=0, padx=5, pady=10)
+        tk.Button(self.window, text="Modificar", command=self.open_edit_window).grid(row=1, column=1, padx=5, pady=10)
+        tk.Button(self.window, text="Eliminar", command=self.delete_entry).grid(row=1, column=2, padx=5, pady=10)
+
+        tk.Button(self.window, text="guardar", command=self.save_tree).grid(row=1, column=3, padx=5, pady=10)
+
+        
+        # Asignar evento de selección en el Treeview
+        self.tree.bind("<<TreeviewSelect>>", self.on_select)
+
+    def load_oficinas(self):
+        """
+        Carga la lista de oficinas desde la base de datos y la muestra en el Treeview.
+        """
+        # Limpiar el Treeview antes de cargar nuevos datos
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+
+        # Obtener las oficinas desde la base de datos (incluyendo el ID)
+        oficinas = self.database_manager.fetch_oficinas_with_id()
+        if oficinas:
+            for oficina in oficinas:
+                self.tree.insert("", "end", values=(oficina[1], oficina[2], oficina[0]))  # (ID, Nombre, Código)
+    
+    def save_tree(self):
+        self.ImageGeneratorApp.get_oficinas()
+        self.ImageGeneratorApp.update_sidebar()
+        self.ImageGeneratorApp.clear_treeview()
+        self.ImageGeneratorApp.fill_tree()
+        self.window.destroy()
+        
+    def on_select(self, event):
+        """
+        Maneja la selección de una oficina en el Treeview.
+        """
+        self.selected_item = self.tree.selection()
+        if self.selected_item:
+            self.selected_values = self.tree.item(self.selected_item, "values")
+
+    def open_add_window(self):
+        """
+        Abre la ventana para agregar una nueva oficina.
+        """
+        EditOficinaWindow(parent = self.window, database_manager = self.database_manager, ofi_entry_window=self)
+
+    def open_edit_window(self):
+        """
+        Abre la ventana para editar una oficina seleccionada.
+        """
+        if hasattr(self, "selected_item") and self.selected_item:
+                id_oficina = self.selected_values[2]  # Código
+                nombre_oficina = self.selected_values[0]  # Nombre
+                codigo_oficina = self.selected_values[1]  # Nombre
+                EditOficinaWindow(self.window, self.database_manager, self, id_oficina, nombre_oficina, codigo_oficina)
+        else:
+            messagebox.showwarning("Selección requerida", "Por favor, seleccione una oficina para editar.")
 
     def delete_entry(self):
-        """Elimina la entrada seleccionada del Treeview y del atributo data."""
-        selected_item = self.tree.selection()
-        if selected_item:
-            self.tree.delete(selected_item)
-            self.data = [self.tree.item(item, 'values') for item in self.tree.get_children()]
+        """
+        Elimina una oficina de la base de datos usando su ID.
+        """
+        if hasattr(self, "selected_item") and self.selected_item:
+            # Obtener el ID de la oficina seleccionada
+            id_oficina = self.selected_values[2]  # El ID es el primer valor en el Treeview
 
-    def accept_changes(self):
-        """Acepta los cambios realizados en la ventana."""
-        # Aquí puedes agregar la lógica para manejar los cambios aceptados
-        self.app.oficinas = self.data  # Guardar los datos en el atributo oficinas
-        self.custom_window.destroy()
-    
-    def cancel_changes(self):
-        """Pregunta si se está seguro de cancelar los cambios."""
-        respuesta = messagebox.askyesno("Cancelar cambios", "¿Estás seguro de cancelar los cambios?", parent=self.custom_window)
-        if respuesta:
-            self.custom_window.destroy()
+            # Pedir confirmación al usuario
+            confirmacion = messagebox.askyesno(
+                "Confirmar",
+                "¿Está seguro de que desea eliminar esta oficina?"
+            )
+
+            if confirmacion:
+                # Eliminar la oficina usando el ID
+                if self.database_manager.delete_oficina(id_oficina):
+                    messagebox.showinfo("Éxito", "Oficina eliminada correctamente.")
+                    self.load_oficinas()  # Recargar la lista de oficinas
+                else:
+                    messagebox.showerror("Error", "No se pudo eliminar la oficina.")
         else:
-            pass  # No hacer nada si la respuesta es no
+            messagebox.showwarning("Selección requerida", "Por favor, seleccione una oficina para eliminar.") 
 
 
 if __name__ == "__main__":

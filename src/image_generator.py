@@ -7,7 +7,7 @@ import io
 import logging
 import os
 import base64
-
+from database_manager import DatabaseManager
 
 from PIL import Image
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
@@ -35,6 +35,7 @@ imagen_url = os.path.join(
 class ImageGenerator:
     def __init__(self):
         self.env = Environment(loader=FileSystemLoader(templates_dir))
+        self.db = DatabaseManager()
 
         # Acceder a la ruta del cargador
         try:
@@ -77,8 +78,20 @@ class ImageGenerator:
                     raise ValueError(f"Falta el campo requerido: {field}")
 
             # Generar la cadena para el código QR
-            qr_data = self.create_qr_code(data_row)
             color = self.get_template(data_row['TipoCarnet'])
+            try:
+                id_trabajador = self.db.fetch_id_by_cedula(data_row['Cedula'])
+            except Exception as e:
+                print(f"Error al obtener el ID del trabajador: {e}")
+                id_trabajador = None
+            
+            last_carnet = self.db.feth_last_carnet(id_trabajador)
+            if not self.db.check_fecha_emision_expiracion(last_carnet):
+                self.db.save_carnet(id_trabajador)
+                new_carnet =  self.db.feth_last_carnet(id_trabajador)
+            else:
+                new_carnet = last_carnet
+
             try:
                 template = self.env.get_template("carnet_template.html")
             except TemplateNotFound:
@@ -96,13 +109,15 @@ class ImageGenerator:
 
 
             try:
+                qr_data = self.create_qr_code(data_row, new_carnet)
                 # Intentar renderizar la plantilla
                 html_out = template.render(
                     data_row=data_row, 
                     ruta_imagen=temp_photo_path,
                     imagen_url=imagen_url, 
                     qr_data=qr_data, 
-                    color=color
+                    color=color,
+                    carnet=new_carnet
                 )
             except Exception as e:
                 # Manejo de errores
@@ -112,11 +127,9 @@ class ImageGenerator:
 
             if not os.path.exists(temp_photo_path):
                 raise FileNotFoundError(f"La ruta de la imagen no existe: {temp_photo_path}")
+
             
-            if not os.path.exists(temp_photo_path):
-                raise FileNotFoundError(f"La ruta de la Plantilla no existe: {imagen_url}")
-
-
+            
             options = {
                 "enable-local-file-access": "",
                 "width": 804,  # Establecer el ancho de la imagen
@@ -124,6 +137,9 @@ class ImageGenerator:
             }
 
             image_filename = f"{data_row['Cedula']}_{data_row['TipoCarnet']}.png"
+            print(image_filename)
+            if os.path.exists(image_filename):
+                os.remove(image_filename)
 
             imgkit.from_string(
                 html_out,
@@ -144,11 +160,11 @@ class ImageGenerator:
             logging.error(f"Error al generar la imagen: {str(e)}")
             raise
 
-    def create_qr_code(self, data_row):
+    def create_qr_code(self, data_row, carnet):
         """Genera un código QR y lo guarda como imagen en una ubicación temporal."""
         try:
-            qr_string = f"Cargo: {data_row['Cargo']}, Cédula: {data_row['Cedula']}, Oficina: {data_row['Adscrito']}"    
-            
+            qr_string = f"V-{data_row['Cedula']} \n{data_row['Nombre']}. {data_row['Apellidos']}. \n\n{data_row['Cargo']} \n{data_row['Adscrito']} \n\nEn caso de Emergencia, Perdida, Extravio, Hurto o Robo Debe de Notificar a la oficina de tecnologia de la informacion \n(212) 351 0822 \n\nFUNDALANAVIAL"    
+            qr_string = qr_string.upper()
             qr = qrcode.QRCode( 
                 version=1,  
                 error_correction=qrcode.constants.ERROR_CORRECT_L,  
@@ -230,7 +246,10 @@ class ImageGenerator:
         # Diccionario que asocia tipos de carnet con códigos de color   
         colores = { 
             "Profesional": "#2d29c6",   
-            "Gerencial": "#c63b29", 
+            "Gerencial": "#ff0000",
+            "Coordinadores": "#E08343",
+            "Obrero": "#00913f",
+            "Seguridad": "#757575",
             "Administrativo": "#c63b29" 
         }   
         # Verificar si el tipo de carnet es válido y devolver el color correspondiente
