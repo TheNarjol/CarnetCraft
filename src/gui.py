@@ -1012,7 +1012,12 @@ class EntryDetailWindow:
                 self.adscrito_combobox = ttk.Combobox(self.detail_window, textvariable=self.edit_vars[3])
                 self.adscrito_combobox['values'] = [oficina[1] for oficina in self.app.oficinas]  # Obtener las abreviaturas de las oficinas
                 self.adscrito_combobox.grid(row=i, column=1, padx=5, pady=5)
-                self.adscrito_combobox.current(0)  # Seleccionar la primera opción por defecto
+                # Si es una nueva entrada, no establecer un valor predeterminado
+                if self.item_values is None:
+                    self.adscrito_combobox.current(0)  # Seleccionar la primera opción por defecto
+                else:
+                    self.adscrito_combobox.set(self.item_values[3])  # Asignar la oficina adscrita para trabajador existente
+            
             else:
                 # Crear un campo de entrada (Entry) con límite de caracteres
                 entry = tk.Entry(self.detail_window, textvariable=self.edit_vars[i])
